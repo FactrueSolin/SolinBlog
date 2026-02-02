@@ -17,9 +17,9 @@ const PATH_SEGMENT_ENCODE_SET: &AsciiSet = &CONTROLS
     .add(b'\\')
     .add(b'+');
 
-pub fn build_page_url(host: &str, page_id: &str, seo_title: &str) -> String {
+pub fn build_page_url(page_id: &str, seo_title: &str) -> String {
     let encoded_title = utf8_percent_encode(seo_title, PATH_SEGMENT_ENCODE_SET).to_string();
-    format!("http://{host}/pages/{encoded_title}+{page_id}")
+    format!("/pages/{encoded_title}+{page_id}")
 }
 
 pub fn parse_page_id_from_slug(slug: &str) -> Option<String> {
@@ -31,22 +31,36 @@ pub fn parse_page_id_from_slug(slug: &str) -> Option<String> {
     Some(page_id.to_string())
 }
 
-pub fn render_index_html(store: &PageStore, host: &str) -> Result<String> {
+pub fn render_index_html(store: &PageStore) -> Result<String> {
     let entries = store.list_page_entries().context("list page entries")?;
     let mut rows = String::new();
     for entry in entries {
         let title = escape_html(&entry.seo.seo_title);
         let description = escape_html(&entry.seo.description);
+        let keywords = entry
+            .seo
+            .keywords
+            .as_ref()
+            .map(|items| items.join(", "))
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| escape_html(&value))
+            .unwrap_or_else(|| "无".to_string());
         let page_id = escape_html(&entry.page_id);
-        let url = build_page_url(host, &entry.page_id, &entry.seo.seo_title);
+        let url = build_page_url(&entry.page_id, &entry.seo.seo_title);
         let url_attr = escape_html_attr(&url);
         rows.push_str(&format!(
-            "<li><a href=\"{url_attr}\">{title}</a><p>{description}</p><small>{page_id}</small></li>",
+            "<article class=\"card\"><div class=\"card-header\"><h2><a href=\"{url_attr}\">{title}</a></h2><span class=\"page-id\">{page_id}</span></div><p class=\"description\">{description}</p><div class=\"keywords\"><span>关键词：</span><span class=\"keyword-value\">{keywords}</span></div><div class=\"actions\"><a class=\"read-more\" href=\"{url_attr}\">阅读页面</a></div></article>",
         ));
     }
 
+    if rows.is_empty() {
+        rows.push_str(
+            "<div class=\"empty\">暂无页面内容，请先通过 MCP 接口发布页面。</div>",
+        );
+    }
+
     Ok(format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>SolinBlog</title></head><body><main><h1>SolinBlog</h1><ul>{rows}</ul></main></body></html>"
+        "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>SolinBlog</title><style>body{{margin:0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif;background:#f6f7fb;color:#1f2937}}header{{background:linear-gradient(120deg,#1e3a8a,#0f766e);color:#fff;padding:48px 24px}}header h1{{margin:0;font-size:32px}}header p{{margin:8px 0 0;opacity:.85}}main.container{{max-width:960px;margin:-32px auto 48px;padding:0 24px}}.card-list{{display:grid;gap:16px}}.card{{background:#fff;border-radius:16px;padding:20px 24px;box-shadow:0 12px 30px rgba(15,23,42,.08);border:1px solid #e5e7eb}}.card-header{{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}}.card-header h2{{margin:0;font-size:20px}}.card-header a{{color:#0f172a;text-decoration:none}}.card-header a:hover{{text-decoration:underline}}.page-id{{font-size:12px;color:#6b7280;background:#f3f4f6;border-radius:999px;padding:4px 10px}}.description{{margin:12px 0 0;color:#374151;line-height:1.6}}.keywords{{margin-top:12px;font-size:13px;color:#4b5563}}.keyword-value{{font-weight:600}}.actions{{margin-top:16px}}.read-more{{display:inline-block;padding:8px 16px;border-radius:999px;background:#0f766e;color:#fff;text-decoration:none;font-size:14px}}.read-more:hover{{background:#115e59}}.empty{{padding:32px;border-radius:16px;background:#fff;border:1px dashed #cbd5f5;color:#64748b;text-align:center}}</style></head><body><header><h1>SolinBlog</h1><p>AI 原生博客 · 最新页面列表</p></header><main class=\"container\"><section class=\"card-list\">{rows}</section></main></body></html>"
     ))
 }
 

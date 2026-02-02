@@ -1,11 +1,13 @@
 use axum::{
+    body::Body,
     extract::{Path, State},
-    http::{header::HOST, HeaderMap, StatusCode},
-    response::{Html, IntoResponse},
+    http::{HeaderMap, Request, StatusCode},
+    middleware::{self, Next},
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use solin_blog::store::PageStore;
@@ -13,28 +15,56 @@ use solin_blog::web::{parse_page_id_from_slug, render_index_html, render_page_ht
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
+
     let store = Arc::new(PageStore::new("data"));
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/pages/{slug}", get(page_handler))
-        .with_state(store);
+        .with_state(store)
+        .layer(middleware::from_fn(log_request));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let host = std::env::var("WEB_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = std::env::var("WEB_PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(3000);
+    let addr = match host.parse::<IpAddr>() {
+        Ok(ip) => SocketAddr::from((ip, port)),
+        Err(_) => SocketAddr::from(([127, 0, 0, 1], port)),
+    };
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .expect("bind http listener");
+    println!("[solin-blog] http server listening on http://{addr}");
     axum::serve(listener, app).await.expect("serve http");
 }
 
-async fn index_handler(
-    State(store): State<Arc<PageStore>>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
-    let host = headers
-        .get(HOST)
+async fn log_request(req: Request<Body>, next: Next) -> Response {
+    let upgrade = req
+        .headers()
+        .get("upgrade")
         .and_then(|value| value.to_str().ok())
-        .unwrap_or("localhost:3000");
-    match render_index_html(&store, host) {
+        .unwrap_or("-");
+    let connection = req
+        .headers()
+        .get("connection")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("-");
+    println!(
+        "[solin-blog] {} {} upgrade={} connection={}",
+        req.method(),
+        req.uri(),
+        upgrade,
+        connection
+    );
+    let response = next.run(req).await;
+    println!("[solin-blog] -> {}", response.status());
+    response
+}
+
+async fn index_handler(State(store): State<Arc<PageStore>>, _headers: HeaderMap) -> impl IntoResponse {
+    match render_index_html(&store) {
         Ok(html) => Html(html).into_response(),
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
