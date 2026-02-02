@@ -63,6 +63,34 @@ impl PageStore {
         }
     }
 
+    pub fn create_page_auto_uid(&self, meta: &PageMeta, html: &str) -> Result<PageMeta> {
+        let index = self.load_index()?;
+        let uid = generate_unique_page_uid(&index)?;
+        let mut meta_with_uid = meta.clone();
+        meta_with_uid.page_uid = uid.clone();
+        self.create_page(&uid, &meta_with_uid, html)?;
+        let (saved_meta, _) = self.load_page(&uid)?;
+        Ok(saved_meta)
+    }
+
+    pub fn resolve_page_id_by_uid(&self, page_uid: &str) -> Result<Option<String>> {
+        let index = self.load_index()?;
+        if index.pages.contains_key(page_uid) {
+            return Ok(Some(page_uid.to_string()));
+        }
+        let matched = index
+            .pages
+            .iter()
+            .find_map(|(page_id, entry)| {
+                if entry.page_uid == page_uid {
+                    Some(page_id.clone())
+                } else {
+                    None
+                }
+            });
+        Ok(matched)
+    }
+
     pub fn create_page(&self, page_id: &str, meta: &PageMeta, html: &str) -> Result<()> {
         if self.page_exists(page_id)? {
             bail!("page already exists: {}", page_id);
