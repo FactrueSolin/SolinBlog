@@ -4,6 +4,8 @@ use serde_json::Map;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+use getrandom::getrandom;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeoMeta {
@@ -19,6 +21,12 @@ pub struct SeoMeta {
 pub struct PageMeta {
     pub seo: SeoMeta,
     #[serde(default)]
+    pub page_uid: String,
+    #[serde(default)]
+    pub created_at: i64,
+    #[serde(default)]
+    pub updated_at: i64,
+    #[serde(default)]
     pub extra: Map<String, serde_json::Value>,
 }
 
@@ -32,6 +40,8 @@ pub struct StoreIndex {
 pub struct PageIndexEntry {
     pub page_id: String,
     pub seo: SeoMeta,
+    #[serde(default)]
+    pub page_uid: String,
     pub original_id: Option<String>,
 }
 
@@ -72,12 +82,56 @@ impl PageStore {
         let meta_path = page_dir.join("meta.json");
         let html_path = page_dir.join("index.html");
 
-        let meta_bytes = serde_json::to_vec_pretty(meta).context("serialize meta.json")?;
+        let mut index = self.load_index()?;
+        let existing_meta = if meta_path.exists() {
+            let existing_raw = fs::read_to_string(&meta_path)
+                .with_context(|| format!("read meta.json {:?}", meta_path))?;
+            let existing_meta: PageMeta =
+                serde_json::from_str(&existing_raw).context("parse meta.json")?;
+            Some(existing_meta)
+        } else {
+            None
+        };
+        let existing_uid = existing_meta
+            .as_ref()
+            .map(|value| value.page_uid.clone())
+            .filter(|uid| !uid.is_empty());
+        let index_uid = index
+            .pages
+            .get(&safe_id)
+            .map(|entry| entry.page_uid.clone())
+            .filter(|uid| !uid.is_empty());
+        let fallback_uid = if meta.page_uid.is_empty() {
+            None
+        } else {
+            Some(meta.page_uid.clone())
+        };
+        let page_uid = match existing_uid.or(index_uid).or(fallback_uid) {
+            Some(uid) => uid,
+            None => generate_unique_page_uid(&index)?,
+        };
+        let now_ts = now_unix_seconds()?;
+        let existing_created_at = existing_meta
+            .as_ref()
+            .map(|value| value.created_at)
+            .filter(|value| *value > 0);
+        let fallback_created_at = if meta.created_at > 0 {
+            Some(meta.created_at)
+        } else {
+            None
+        };
+        let created_at = existing_created_at.or(fallback_created_at).unwrap_or(now_ts);
+        let updated_at = now_ts;
+        let mut meta_to_write = meta.clone();
+        meta_to_write.page_uid = page_uid.clone();
+        meta_to_write.created_at = created_at;
+        meta_to_write.updated_at = updated_at;
+
+        let meta_bytes =
+            serde_json::to_vec_pretty(&meta_to_write).context("serialize meta.json")?;
         atomic_write(&meta_path, &meta_bytes).context("write meta.json")?;
         validate_html(html).context("validate html")?;
         atomic_write(&html_path, html.as_bytes()).context("write index.html")?;
-
-        let mut index = self.load_index()?;
         let original_id = index
             .pages
             .get(&safe_id)
@@ -93,7 +147,8 @@ impl PageStore {
             safe_id.clone(),
             PageIndexEntry {
                 page_id: safe_id,
-                seo: meta.seo.clone(),
+                seo: meta_to_write.seo.clone(),
+                page_uid: page_uid.clone(),
                 original_id,
             },
         );
@@ -142,10 +197,53 @@ impl PageStore {
 
         let safe_id = sanitize_page_id(page_id);
         let meta_path = self.base_dir.join(&safe_id).join("meta.json");
-        let meta_bytes = serde_json::to_vec_pretty(meta).context("serialize meta.json")?;
-        atomic_write(&meta_path, &meta_bytes).context("write meta.json")?;
-
         let mut index = self.load_index()?;
+        let existing_meta = if meta_path.exists() {
+            let existing_raw = fs::read_to_string(&meta_path)
+                .with_context(|| format!("read meta.json {:?}", meta_path))?;
+            let existing_meta: PageMeta =
+                serde_json::from_str(&existing_raw).context("parse meta.json")?;
+            Some(existing_meta)
+        } else {
+            None
+        };
+        let existing_uid = existing_meta
+            .as_ref()
+            .map(|value| value.page_uid.clone())
+            .filter(|uid| !uid.is_empty());
+        let index_uid = index
+            .pages
+            .get(&safe_id)
+            .map(|entry| entry.page_uid.clone())
+            .filter(|uid| !uid.is_empty());
+        let fallback_uid = if meta.page_uid.is_empty() {
+            None
+        } else {
+            Some(meta.page_uid.clone())
+        };
+        let page_uid = match existing_uid.or(index_uid).or(fallback_uid) {
+            Some(uid) => uid,
+            None => generate_unique_page_uid(&index)?,
+        };
+        let now_ts = now_unix_seconds()?;
+        let existing_created_at = existing_meta
+            .as_ref()
+            .map(|value| value.created_at)
+            .filter(|value| *value > 0);
+        let fallback_created_at = if meta.created_at > 0 {
+            Some(meta.created_at)
+        } else {
+            None
+        };
+        let created_at = existing_created_at.or(fallback_created_at).unwrap_or(now_ts);
+        let updated_at = now_ts;
+        let mut meta_to_write = meta.clone();
+        meta_to_write.page_uid = page_uid.clone();
+        meta_to_write.created_at = created_at;
+        meta_to_write.updated_at = updated_at;
+        let meta_bytes =
+            serde_json::to_vec_pretty(&meta_to_write).context("serialize meta.json")?;
+        atomic_write(&meta_path, &meta_bytes).context("write meta.json")?;
         let original_id = index
             .pages
             .get(&safe_id)
@@ -161,7 +259,8 @@ impl PageStore {
             safe_id.clone(),
             PageIndexEntry {
                 page_id: safe_id,
-                seo: meta.seo.clone(),
+                seo: meta_to_write.seo.clone(),
+                page_uid,
                 original_id,
             },
         );
@@ -180,7 +279,54 @@ impl PageStore {
         validate_html(html).context("validate html")?;
         atomic_write(&html_path, html.as_bytes()).context("write index.html")?;
 
-        let index = self.load_index()?;
+        let meta_path = self.base_dir.join(&safe_id).join("meta.json");
+        let meta_raw = fs::read_to_string(&meta_path)
+            .with_context(|| format!("read meta.json {:?}", meta_path))?;
+        let mut meta: PageMeta = serde_json::from_str(&meta_raw).context("parse meta.json")?;
+        let mut index = self.load_index()?;
+        let now_ts = now_unix_seconds()?;
+        let index_uid = index
+            .pages
+            .get(&safe_id)
+            .map(|entry| entry.page_uid.clone())
+            .filter(|uid| !uid.is_empty());
+        let meta_uid = if meta.page_uid.is_empty() {
+            None
+        } else {
+            Some(meta.page_uid.clone())
+        };
+        let page_uid = match meta_uid.or(index_uid) {
+            Some(uid) => uid,
+            None => generate_unique_page_uid(&index)?,
+        };
+        if meta.created_at <= 0 {
+            meta.created_at = now_ts;
+        }
+        meta.updated_at = now_ts;
+        meta.page_uid = page_uid.clone();
+        let meta_bytes = serde_json::to_vec_pretty(&meta).context("serialize meta.json")?;
+        atomic_write(&meta_path, &meta_bytes).context("write meta.json")?;
+
+        let original_id = index
+            .pages
+            .get(&safe_id)
+            .and_then(|entry| entry.original_id.clone())
+            .or_else(|| {
+                if safe_id == page_id {
+                    None
+                } else {
+                    Some(page_id.to_string())
+                }
+            });
+        index.pages.insert(
+            safe_id.clone(),
+            PageIndexEntry {
+                page_id: safe_id,
+                seo: meta.seo.clone(),
+                page_uid,
+                original_id,
+            },
+        );
         self.save_index(&index)?;
 
         Ok(())
@@ -251,6 +397,7 @@ impl PageStore {
                 PageIndexEntry {
                     page_id,
                     seo: meta.seo,
+                    page_uid: meta.page_uid,
                     original_id: None,
                 },
             );
@@ -396,6 +543,37 @@ pub fn sanitize_page_id(page_id: &str) -> String {
     } else {
         sanitized
     }
+}
+
+const PAGE_UID_LEN: usize = 16;
+const PAGE_UID_ALPHABET: &[u8; 62] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+fn generate_page_uid() -> Result<String> {
+    let mut bytes = [0u8; PAGE_UID_LEN];
+    getrandom(&mut bytes).map_err(|err| anyhow::anyhow!("getrandom page uid failed: {}", err))?;
+    let mut out = String::with_capacity(PAGE_UID_LEN);
+    for byte in bytes {
+        let idx = (byte % 62) as usize;
+        out.push(PAGE_UID_ALPHABET[idx] as char);
+    }
+    Ok(out)
+}
+
+fn generate_unique_page_uid(index: &StoreIndex) -> Result<String> {
+    for _ in 0..8 {
+        let uid = generate_page_uid()?;
+        if !index.pages.values().any(|entry| entry.page_uid == uid) {
+            return Ok(uid);
+        }
+    }
+    bail!("failed to generate unique page uid")
+}
+
+fn now_unix_seconds() -> Result<i64> {
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .context("system time before unix epoch")?;
+    Ok(duration.as_secs().min(i64::MAX as u64) as i64)
 }
 
 fn atomic_write(path: &Path, data: &[u8]) -> Result<()> {
