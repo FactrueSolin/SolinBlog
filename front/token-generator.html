@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Token 生成器</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --primary-dark: #1e40af;
+        --border: #e5e7eb;
+        --success: #16a34a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+
+      .card {
+        width: min(560px, 100%);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 26px;
+      }
+
+      p {
+        margin: 0 0 24px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .token-box {
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        background: #f9fafb;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 18px;
+        letter-spacing: 0.12em;
+        min-height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        word-break: break-all;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 18px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.1s ease, background 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      .primary {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+      }
+
+      .primary:hover {
+        background: var(--primary-dark);
+      }
+
+      .ghost {
+        background: #eef2ff;
+        color: #1f2937;
+      }
+
+      .ghost:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .hint {
+        margin-top: 16px;
+        color: var(--success);
+        font-size: 14px;
+        min-height: 20px;
+      }
+
+      @media (max-width: 480px) {
+        .card {
+          padding: 24px 20px;
+        }
+
+        h1 {
+          font-size: 22px;
+        }
+
+        .token-box {
+          font-size: 16px;
+          letter-spacing: 0.08em;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>MCP Token 生成器</h1>
+      <p>生成 16 位随机 token，用于保护 MCP 接口访问。</p>
+
+      <section id="token-display" class="token-box">点击生成按钮创建新 token</section>
+
+      <div class="actions">
+        <button class="primary" id="generate-btn">生成 Token</button>
+        <button class="ghost" id="copy-btn" disabled>复制到剪贴板</button>
+      </div>
+
+      <div id="status" class="hint"></div>
+    </main>
+
+    <script>
+      const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const display = document.getElementById("token-display");
+      const status = document.getElementById("status");
+      const copyBtn = document.getElementById("copy-btn");
+
+      function generateToken() {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        let token = "";
+        for (const byte of bytes) {
+          token += charset[byte % charset.length];
+        }
+        display.textContent = token;
+        status.textContent = "";
+        copyBtn.disabled = false;
+      }
+
+      async function copyToken() {
+        const token = display.textContent.trim();
+        if (!token || token.includes("点击生成")) {
+          status.textContent = "请先生成 token";
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(token);
+          status.textContent = "已复制到剪贴板";
+        } catch (err) {
+          status.textContent = "复制失败，请手动选择复制";
+        }
+      }
+
+      document.getElementById("generate-btn").addEventListener("click", generateToken);
+      copyBtn.addEventListener("click", copyToken);
+    </script>
+  </body>
+</html>

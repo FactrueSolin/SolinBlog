@@ -1,5 +1,6 @@
 use crate::store::{PageMeta, PageStore};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use chrono::{TimeZone, Utc};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
 const PATH_SEGMENT_ENCODE_SET: &AsciiSet = &CONTROLS
@@ -32,6 +33,8 @@ pub fn parse_page_id_from_slug(slug: &str) -> Option<String> {
 }
 
 pub fn render_index_html(store: &PageStore) -> Result<String> {
+    let template = std::fs::read_to_string("front/index.html")
+        .context("read front/index.html template")?;
     let entries = store.list_page_entries().context("list page entries")?;
     let mut rows = String::new();
     for entry in entries {
@@ -59,13 +62,77 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
         );
     }
 
-    Ok(format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>SolinBlog</title><style>body{{margin:0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif;background:#f6f7fb;color:#1f2937}}header{{background:linear-gradient(120deg,#1e3a8a,#0f766e);color:#fff;padding:48px 24px}}header h1{{margin:0;font-size:32px}}header p{{margin:8px 0 0;opacity:.85}}main.container{{max-width:960px;margin:-32px auto 48px;padding:0 24px}}.card-list{{display:grid;gap:16px}}.card{{background:#fff;border-radius:16px;padding:20px 24px;box-shadow:0 12px 30px rgba(15,23,42,.08);border:1px solid #e5e7eb}}.card-header{{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}}.card-header h2{{margin:0;font-size:20px}}.card-header a{{color:#0f172a;text-decoration:none}}.card-header a:hover{{text-decoration:underline}}.page-id{{font-size:12px;color:#6b7280;background:#f3f4f6;border-radius:999px;padding:4px 10px}}.description{{margin:12px 0 0;color:#374151;line-height:1.6}}.keywords{{margin-top:12px;font-size:13px;color:#4b5563}}.keyword-value{{font-weight:600}}.actions{{margin-top:16px}}.read-more{{display:inline-block;padding:8px 16px;border-radius:999px;background:#0f766e;color:#fff;text-decoration:none;font-size:14px}}.read-more:hover{{background:#115e59}}.empty{{padding:32px;border-radius:16px;background:#fff;border:1px dashed #cbd5f5;color:#64748b;text-align:center}}</style></head><body><header><h1>SolinBlog</h1><p>AI 原生博客 · 最新页面列表</p></header><main class=\"container\"><section class=\"card-list\">{rows}</section></main></body></html>"
-    ))
+    let beian_number = std::env::var("BEIAN_NUMBER")
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let beian_html = if beian_number.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "<footer class=\"beian\">{}</footer>",
+            escape_html(&beian_number)
+        )
+    };
+
+    let rendered = replace_template(
+        &template,
+        &[
+            ("page_list", &rows),
+            ("site_title", "SolinBlog"),
+            ("site_subtitle", "AI 原生博客 · 最新页面列表"),
+            ("beian_number", &beian_html),
+        ],
+    )?;
+
+    Ok(rendered)
+}
+
+fn replace_template(template: &str, values: &[(&str, &str)]) -> Result<String> {
+    let mut out = template.to_string();
+    for (key, value) in values {
+        let placeholder = format!("{{{{{}}}}}", key);
+        if !out.contains(&placeholder) {
+            bail!("template missing placeholder {placeholder}");
+        }
+        out = out.replace(&placeholder, value);
+    }
+    Ok(out)
 }
 
 pub fn render_page_html(meta: &PageMeta, html: &str) -> String {
     inject_seo_meta(html, &meta.seo)
+}
+
+pub fn render_sitemap_xml(store: &PageStore, base_url: &str) -> Result<String> {
+    let entries = store.list_page_entries().context("list page entries")?;
+    let mut body = String::new();
+    let base = normalize_base_url(base_url);
+    for entry in entries {
+        let meta = store
+            .get_page_meta(&entry.page_id)
+            .with_context(|| format!("load page meta {}", entry.page_id))?;
+        let page_path = build_page_url(&entry.page_id, &entry.seo.seo_title);
+        let page_url = format!("{}{}", base, page_path);
+        let lastmod = format_unix_timestamp(meta.updated_at);
+        body.push_str("  <url>\n");
+        body.push_str(&format!(
+            "    <loc>{}</loc>\n",
+            escape_xml(&page_url)
+        ));
+        body.push_str(&format!(
+            "    <lastmod>{}</lastmod>\n",
+            escape_xml(&lastmod)
+        ));
+        body.push_str("    <changefreq>weekly</changefreq>\n");
+        body.push_str("    <priority>0.8</priority>\n");
+        body.push_str("  </url>\n");
+    }
+
+    Ok(format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n{}</urlset>",
+        body
+    ))
 }
 
 pub fn inject_seo_meta(html: &str, seo: &crate::store::SeoMeta) -> String {
@@ -323,4 +390,32 @@ fn escape_html_attr(input: &str) -> String {
         }
     }
     out
+}
+
+fn escape_xml(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for ch in input.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+fn normalize_base_url(base_url: &str) -> String {
+    base_url.trim_end_matches('/').to_string()
+}
+
+fn format_unix_timestamp(timestamp: i64) -> String {
+    let safe_ts = timestamp.max(0);
+    let datetime = Utc
+        .timestamp_opt(safe_ts, 0)
+        .single()
+        .unwrap_or_else(|| Utc.timestamp(0, 0));
+    datetime.to_rfc3339()
 }
