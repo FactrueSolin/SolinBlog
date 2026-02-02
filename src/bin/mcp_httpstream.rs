@@ -16,7 +16,7 @@ use rmcp::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use SolinBlog::store::{PageMeta, PageStore, validate_html};
+use solin_blog::store::{PageMeta, PageStore, validate_html};
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PushPageRequest {
@@ -139,7 +139,7 @@ impl BlogMcpServer {
         Parameters(params): Parameters<PushPageRequest>,
     ) -> Result<Json<PushPageResponse>, String> {
         let meta = PageMeta {
-            seo: SolinBlog::store::SeoMeta {
+            seo: solin_blog::store::SeoMeta {
                 seo_title: params.seo_title,
                 description: params.description,
                 keywords: params.keywords,

@@ -8,15 +8,15 @@ use axum::{
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use SolinBlog::store::PageStore;
-use SolinBlog::web::{parse_page_id_from_slug, render_index_html, render_page_html};
+use solin_blog::store::PageStore;
+use solin_blog::web::{parse_page_id_from_slug, render_index_html, render_page_html};
 
 #[tokio::main]
 async fn main() {
     let store = Arc::new(PageStore::new("data"));
     let app = Router::new()
         .route("/", get(index_handler))
-        .route("/pages/:slug", get(page_handler))
+        .route("/pages/{slug}", get(page_handler))
         .with_state(store);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

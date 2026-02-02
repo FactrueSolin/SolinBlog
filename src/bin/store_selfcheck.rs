@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use SolinBlog::store::{sanitize_page_id, PageMeta, PageStore, SeoMeta};
+use solin_blog::store::{sanitize_page_id, PageMeta, PageStore, SeoMeta};
 
 struct PageDirGuard {
     page_dir: PathBuf,
