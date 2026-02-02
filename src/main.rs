@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Host, Path, State},
-    http::StatusCode,
+    extract::{Path, State},
+    http::{header::HOST, HeaderMap, StatusCode},
     response::{Html, IntoResponse},
     routing::get,
     Router,
@@ -28,9 +28,13 @@ async fn main() {
 
 async fn index_handler(
     State(store): State<Arc<PageStore>>,
-    Host(host): Host,
+    headers: HeaderMap,
 ) -> impl IntoResponse {
-    match render_index_html(&store, &host) {
+    let host = headers
+        .get(HOST)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("localhost:3000");
+    match render_index_html(&store, host) {
         Ok(html) => Html(html).into_response(),
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
