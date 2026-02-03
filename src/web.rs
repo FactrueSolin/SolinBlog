@@ -21,11 +21,27 @@ pub fn parse_page_id_from_slug(slug: &str) -> Option<String> {
 }
 
 pub fn render_index_html(store: &PageStore) -> Result<String> {
+    let header_html = std::fs::read_to_string("front/header.html")
+        .context("read front/header.html template")?;
     let template = std::fs::read_to_string("front/index.html")
         .context("read front/index.html template")?;
     let entries = store.list_page_entries().context("list page entries")?;
-    let mut rows = String::new();
+    let mut pages = Vec::new();
     for entry in entries {
+        let meta = store
+            .get_page_meta(&entry.page_id)
+            .with_context(|| format!("load page meta {}", entry.page_id))?;
+        pages.push((entry, meta));
+    }
+    pages.sort_by(|(left_entry, left_meta), (right_entry, right_meta)| {
+        right_meta
+            .updated_at
+            .cmp(&left_meta.updated_at)
+            .then_with(|| right_meta.created_at.cmp(&left_meta.created_at))
+            .then_with(|| right_entry.page_id.cmp(&left_entry.page_id))
+    });
+    let mut rows = String::new();
+    for (entry, meta) in pages {
         let title = escape_html(&entry.seo.seo_title);
         let description = escape_html(&entry.seo.description);
         let keywords = entry
@@ -36,11 +52,12 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
             .filter(|value| !value.trim().is_empty())
             .map(|value| escape_html(&value))
             .unwrap_or_else(|| "无".to_string());
-        let page_id = escape_html(&entry.page_id);
+        let page_id_attr = escape_html_attr(&entry.page_id);
         let url = build_page_url(&entry.page_id, &entry.seo.seo_title);
         let url_attr = escape_html_attr(&url);
+        let updated_at = escape_html(&format_display_timestamp(meta.updated_at));
         rows.push_str(&format!(
-            "<article class=\"card\"><div class=\"card-header\"><h2><a href=\"{url_attr}\">{title}</a></h2><span class=\"page-id\">{page_id}</span></div><p class=\"description\">{description}</p><div class=\"keywords\"><span>关键词：</span><span class=\"keyword-value\">{keywords}</span></div><div class=\"actions\"><a class=\"read-more\" href=\"{url_attr}\">阅读页面</a></div></article>",
+            "<article class=\"card\" data-page-id=\"{page_id_attr}\"><div class=\"card-header\"><h2><a href=\"{url_attr}\">{title}</a></h2><span class=\"updated-at\">更新：{updated_at}</span></div><p class=\"description\">{description}</p><div class=\"keywords\"><span>关键词：</span><span class=\"keyword-value\">{keywords}</span></div><div class=\"actions\"><a class=\"read-more\" href=\"{url_attr}\">阅读页面</a></div></article>",
         ));
     }
 
@@ -66,6 +83,7 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
     let rendered = replace_template(
         &template,
         &[
+            ("site_header", &header_html),
             ("page_list", &rows),
             ("site_title", "SolinBlog"),
             ("site_subtitle", "AI 原生博客 · 最新页面列表"),
@@ -107,9 +125,14 @@ pub fn markdown_to_html(markdown: &str) -> String {
 
 pub fn render_markdown_page(markdown: &str) -> Result<String> {
     let markdown_html = markdown_to_html(markdown);
+    let header_html = std::fs::read_to_string("front/header.html")
+        .context("read front/header.html template")?;
     let template = std::fs::read_to_string("front/markdown.html")
         .context("read front/markdown.html template")?;
-    let rendered = replace_template(&template, &[("markdown_html", &markdown_html)])?;
+    let rendered = replace_template(
+        &template,
+        &[("site_header", &header_html), ("markdown_html", &markdown_html)],
+    )?;
     Ok(rendered)
 }
 
@@ -427,4 +450,13 @@ fn format_unix_timestamp(timestamp: i64) -> String {
         .single()
         .unwrap_or_else(|| Utc.timestamp(0, 0));
     datetime.to_rfc3339()
+}
+
+fn format_display_timestamp(timestamp: i64) -> String {
+    let safe_ts = timestamp.max(0);
+    let datetime = Utc
+        .timestamp_opt(safe_ts, 0)
+        .single()
+        .unwrap_or_else(|| Utc.timestamp(0, 0));
+    datetime.format("%Y-%m-%d %H:%M").to_string()
 }
