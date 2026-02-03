@@ -27,6 +27,8 @@ pub struct PageMeta {
     #[serde(default)]
     pub updated_at: i64,
     #[serde(default)]
+    pub view_count: u64,
+    #[serde(default)]
     pub extra: Map<String, serde_json::Value>,
 }
 
@@ -358,6 +360,18 @@ impl PageStore {
         self.save_index(&index)?;
 
         Ok(())
+    }
+
+    pub fn increment_view_count(&self, page_id: &str) -> Result<PageMeta> {
+        let safe_id = sanitize_page_id(page_id);
+        let meta_path = self.base_dir.join(&safe_id).join("meta.json");
+        let meta_raw = fs::read_to_string(&meta_path)
+            .with_context(|| format!("read meta.json {:?}", meta_path))?;
+        let mut meta: PageMeta = serde_json::from_str(&meta_raw).context("parse meta.json")?;
+        meta.view_count = meta.view_count.saturating_add(1);
+        let meta_bytes = serde_json::to_vec_pretty(&meta).context("serialize meta.json")?;
+        atomic_write(&meta_path, &meta_bytes).context("write meta.json")?;
+        Ok(meta)
     }
 
     pub fn delete_page(&self, page_id: &str) -> Result<()> {

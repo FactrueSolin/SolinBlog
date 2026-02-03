@@ -106,6 +106,7 @@ fn main() -> Result<()> {
         page_uid: String::new(),
         created_at: 0,
         updated_at: 0,
+        view_count: 0,
         extra: Map::new(),
     };
     let html = concat!(
@@ -154,6 +155,7 @@ fn main() -> Result<()> {
         page_uid: String::new(),
         created_at: 0,
         updated_at: 0,
+        view_count: 0,
         extra: Map::new(),
     };
 

@@ -55,6 +55,7 @@ struct PageMetaResponse {
     page_uid: String,
     created_at: i64,
     updated_at: i64,
+    view_count: u64,
 }
 
 impl From<PageMeta> for PageMetaResponse {
@@ -68,6 +69,7 @@ impl From<PageMeta> for PageMetaResponse {
             page_uid: meta.page_uid,
             created_at: meta.created_at,
             updated_at: meta.updated_at,
+            view_count: meta.view_count,
         }
     }
 }
@@ -168,6 +170,7 @@ impl BlogMcpServer {
             page_uid: String::new(),
             created_at: 0,
             updated_at: 0,
+            view_count: 0,
             extra: Default::default(),
         };
 
@@ -538,7 +541,13 @@ async fn page_handler(
             .into_response();
     };
     match store.load_page(&page_id) {
-        Ok((meta, html)) => Html(render_page_html(&meta, &html)).into_response(),
+        Ok((meta, html)) => {
+            let rendered = render_page_html(&meta, &html);
+            if let Err(err) = store.increment_view_count(&page_id) {
+                eprintln!("[solin-blog] increment view count failed: {err}");
+            }
+            Html(rendered).into_response()
+        }
         Err(err) => (
             StatusCode::NOT_FOUND,
             format!("page not found: {err}"),
