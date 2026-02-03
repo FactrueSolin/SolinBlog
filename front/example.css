@@ -1,0 +1,436 @@
+/* 统一公共变量 */
+:root {
+    /* 原主题的边框颜色 */
+    --color-border-light: rgba(35, 35, 45, 0.12);
+    --color-border-dark: rgba(255, 255, 255, 0.15);
+
+    /* 吉卜力主题的公共变量 */
+    --border-radius: 12px;
+    --button-radius: 8px;
+    --transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+    --shadow-sm: 0 2px 8px;
+    --shadow-md: 0 5px 15px;
+    --shadow-lg: 0 10px 25px;
+    --font-stack: "Hiragino Maru Gothic ProN", "Meiryo", "SF Pro", "Segoe UI", sans-serif;
+}
+
+/* 全局排版 */
+* {
+    line-height: 1.7 !important;
+    letter-spacing: 0.018em !important;
+    font-weight: 500;
+}
+
+/* 全局字体 & 文本颜色由各模式中的 --text-color 决定 */
+body {
+    font-family: var(--font-stack);
+    transition: var(--transition);
+    color: var(--text-color);
+}
+
+/* Markdown 行内代码（通用默认，夜间模式会被 body[theme-mode="dark"] code 覆盖）*/
+.markdown * code {
+    color: rgb(203, 64, 66);
+}
+
+/* ===== 白天模式：使用第一份主题为主 ===== */
+body[theme-mode='light'] {
+    /* 原主题（暖橙纸质感）的变量 */
+    --color-primary: #C96442 !important;
+    --color-primary-soft: rgba(201, 100, 66, 0.6);
+    --color-primary-mute: rgba(201, 100, 66, 0.2);
+    --color-background: #F5F4ED;
+    --color-background-mute: #F0EFEB;
+    --color-background-soft: #F0EEE6;
+    --navbar-background: #F5F4ED;
+    --chat-background: #FAF9F5;
+    --chat-background-user: #F0EEE6;
+    --chat-background-assistant: #FAF9F5;
+    --color-text: #262624;
+    --color-border: var(--color-border-light);
+
+    /* 兼容吉卜力风格组件所需的变量（按原第二份主题的浅色取值） */
+    --button-gradient: linear-gradient(135deg, #a4c3b2 0%, #cce3de 100%);
+    --hover-gradient: linear-gradient(135deg, #cce3de 0%, #e0f0ea 100%);
+    --shadow-color: rgba(73, 111, 105, 0.15);
+    --text-color: var(--color-text);
+    /* 统一 body 使用 */
+    --text-color-soft: #3a506b;
+    --color-white: #f0f7f4;
+    --highlight-color: #6b9080;
+
+    /* 粒子颜色（变量保留，但不再使用） */
+    --particle-color-1: #6b9080;
+    --particle-color-2: #a4c3b2;
+    --particle-color-3: #cce3de;
+}
+
+/* ===== 黑夜模式：使用第二份吉卜力主题 ===== */
+body[theme-mode="dark"] {
+    /* 吉卜力夜空 / 龙猫夜晚风格的变量（原第二份主题暗色） */
+    --color-background: linear-gradient(135deg, #1e2d40 0%, #2d4059 50%, #3a506b 100%);
+    --color-background-soft: linear-gradient(135deg, #2d4059 0%, #3a506b 50%, #4b618d 100%);
+    --color-background-mute: rgba(45, 64, 89, 0.7);
+    --navbar-background: linear-gradient(90deg, #1e2d40 0%, #2d4059 100%);
+    --chat-background: linear-gradient(170deg, #1e2d40 0%, #2d4059 50%, #3a506b 100%);
+    --chat-background-user: linear-gradient(135deg, #334863 0%, #445c81 100%);
+    --chat-background-assistant: linear-gradient(135deg, #264653 0%, #38677a 100%);
+    --button-gradient: linear-gradient(135deg, #3a506b 0%, #4a618b 100%);
+    --hover-gradient: linear-gradient(135deg, #4a618b 0%, #5a72a0 100%);
+    --shadow-color: rgba(10, 15, 35, 0.4);
+    --text-color: #e0e7f1;
+    --text-color-soft: #b8c4d9;
+    --color-white: #1e2d40;
+    --highlight-color: #a4c3b2;
+
+    /* 魔法粒子颜色变量保留，效果已移除 */
+    --particle-color-1: #a4c3b2;
+    --particle-color-2: #445c81;
+    --particle-color-3: #5a72a0;
+
+    /* 兼容第一份主题所需的变量 */
+    --color-border: var(--color-border-dark);
+    --color-text: var(--text-color);
+    --color-text-secondary: var(--text-color-soft);
+    --chat-text-user: var(--text-color);
+}
+
+/* ===== 第一份主题中的组件样式（两种模式共用变量）===== */
+
+/* 消息气泡容器（Card 风格对话气泡） */
+.message-content-container {
+    background: var(--chat-background-assistant) !important;
+    margin: 8px 0 !important;
+    padding: 16px 20px !important;
+    border-radius: 16px !important;
+    border: 1px solid var(--color-border) !important;
+    box-shadow: none !important;
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out forwards;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease !important;
+}
+
+.message-content-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+body[theme-mode='dark'] .message-content-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.message-user .message-content-container {
+    background: var(--chat-background-user) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* 消息淡入动画 */
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+/* 输入栏（原主题 #inputbar） */
+#inputbar {
+    margin: 0px 10px 10px 10px;
+    background: #FFFFFF !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.03) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+#inputbar:focus-within {
+    transform: scale(1.01);
+    box-shadow: 0 8px 24px -8px rgba(201, 100, 66, 0.15);
+    border-color: var(--color-primary-soft) !important;
+}
+
+body[theme-mode='dark'] #inputbar {
+    background: var(--color-background-soft) !important;
+    border: 1px solid var(--color-border) !important;
+    box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+body[theme-mode='dark'] #inputbar:focus-within {
+    box-shadow: 0 8px 24px -8px rgba(232, 153, 117, 0.25);
+    border-color: var(--color-primary-soft) !important;
+}
+
+body[theme-mode='dark'] #inputbar input,
+body[theme-mode='dark'] #inputbar textarea {
+    color: var(--color-text) !important;
+}
+
+body[theme-mode='dark'] #inputbar input::placeholder,
+body[theme-mode='dark'] #inputbar textarea::placeholder {
+    color: var(--color-text-secondary) !important;
+}
+
+/* Ant Collapse 卡片 */
+.ant-collapse {
+    border: none !important;
+    background-color: transparent !important;
+}
+
+.ant-collapse>.ant-collapse-item {
+    background-color: var(--chat-background-assistant) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 16px !important;
+    margin-bottom: 12px !important;
+    overflow: hidden;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease !important;
+}
+
+.ant-collapse>.ant-collapse-item:last-child {
+    margin-bottom: 0 !important;
+}
+
+.ant-collapse-header {
+    padding: 16px 20px !important;
+    align-items: center !important;
+}
+
+.ant-collapse-content {
+    border-top: 1px solid var(--color-border) !important;
+    background-color: transparent !important;
+}
+
+.ant-collapse-content>.ant-collapse-content-box {
+    padding: 16px 20px !important;
+}
+
+body[theme-mode='dark'] .ant-collapse-header {
+    color: var(--color-text) !important;
+}
+
+body[theme-mode='dark'] .ant-collapse-content {
+    color: var(--color-text) !important;
+}
+
+/* 气泡按钮 hover */
+.bubble * .message-action-button:hover {
+    background-color: var(--color-background-mute) !important;
+    transform: scale(1.1);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+/* 主要按钮（Ant） */
+.ant-btn-primary {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: #f2f2f2 !important;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(232, 153, 117, 0.3) !important;
+}
+
+/* Tabs */
+.ant-tabs-tab:hover {
+    color: var(--color-primary-soft) !important;
+}
+
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: var(--color-primary) !important;
+}
+
+body[theme-mode='dark'] .ant-tabs-tab {
+    color: var(--color-text-secondary) !important;
+}
+
+body[theme-mode='dark'] .ant-tabs-tab:hover {
+    color: var(--color-primary-soft) !important;
+}
+
+/* ===== 第二份吉卜力主题中的组件样式（去除魔法粒子） ===== */
+
+/* 内容容器（整体聊天面板） */
+#content-container {
+    background: var(--chat-background) !important;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg) var(--shadow-color);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 消息区背景透明以露出渐变背景 */
+#content-container #messages {
+    background: transparent !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* 导航栏（顶部） */
+.navbar {
+    background: var(--navbar-background);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 链接统一基础样式 */
+a,
+a:link,
+a:visited,
+a:hover,
+a:active {
+    text-decoration: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    transition: var(--transition);
+}
+
+/* 侧边栏链接 hover */
+[class*="sidebar"] a,
+[class*="menu"] a,
+[class*="nav"] a,
+[id*="sidebar"] a,
+[id*="menu"] a,
+[id*="nav"] a {
+    &:hover {
+        opacity: 0.9;
+        background: var(--color-background-mute);
+        transform: translateX(3px);
+    }
+}
+
+/* 主内容区链接（正文、消息内链接） */
+.main-content a,
+.message-container a {
+    color: var(--highlight-color);
+    border-bottom: 1px solid var(--highlight-color) !important;
+
+    &:hover {
+        color: var(--text-color);
+        border-bottom-color: var(--text-color) !important;
+    }
+}
+
+/* 吉卜力风格聊天气泡（另一套选择器，可与 .message-content-container 共存） */
+.message-container {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm) var(--shadow-color);
+    transition: var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 1;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md) var(--shadow-color);
+    }
+}
+
+.user-message {
+    background: var(--chat-background-user);
+}
+
+.assistant-message {
+    background: var(--chat-background-assistant);
+}
+
+/* Cherry Studio 输入框容器 */
+.inputbar-container {
+    background: var(--color-background-soft) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: var(--border-radius) !important;
+}
+
+/* 按钮（吉卜力风格） */
+button {
+    background: var(--button-gradient);
+    border-radius: var(--button-radius);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-color);
+    font-weight: 500;
+    transition: var(--transition);
+
+    &:hover {
+        background: var(--hover-gradient);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-sm) var(--shadow-color);
+    }
+}
+
+/* 表单元素 */
+input,
+textarea {
+    background: var(--color-background-soft);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-color);
+    font-family: var(--font-stack);
+    padding: 10px 12px;
+}
+
+/* 代码块 - 夜间使用吉卜力色板，白天保持原主题轻量高亮 */
+body[theme-mode="dark"] code {
+    background-color: rgba(58, 80, 107, 0.3) !important;
+    color: var(--highlight-color) !important;
+}
+
+body[theme-mode="dark"] pre code {
+    color: #b8c4d9 !important;
+}
+
+body[theme-mode="light"] pre code {
+    color: #2d4059 !important;
+}
+
+/* 滚动条（跟随变量颜色，适配两种模式） */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+
+    &-track {
+        background: var(--color-background-mute);
+        border-radius: 6px;
+    }
+
+    &-thumb {
+        background: var(--color-background-soft);
+        border-radius: 6px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+
+        &:hover {
+            background: var(--button-gradient);
+        }
+    }
+}
+
+/* 卡片（通用吉卜力卡片） */
+.card {
+    background: var(--color-background-soft);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md) var(--shadow-color);
+    transition: var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+
+    &:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg) var(--shadow-color);
+    }
+}
+
+/* 吉卜力特有元素 - 卡片上的小图案点缀 */
+.card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+    opacity: 0.3;
+    z-index: 0;
+    border-radius: var(--border-radius);
+    pointer-events: none;
+}
