@@ -182,6 +182,7 @@ impl BlogMcpServer {
                 url: Some(build_page_full_url(
                     &resolve_site_url_from_env(),
                     &saved_meta.page_uid,
+                    &saved_meta.seo.seo_title,
                 )),
                 success: true,
                 page_id: Some(saved_meta.page_uid.clone()),
@@ -216,7 +217,7 @@ impl BlogMcpServer {
         for entry in entries {
             let meta = self.store.get_page_meta(&entry.page_id).ok();
             if let Some(meta) = meta {
-                let url = build_page_full_url(&base_url, &meta.page_uid);
+                let url = build_page_full_url(&base_url, &meta.page_uid, &meta.seo.seo_title);
                 pages.push(PageWithMeta {
                     page_id: meta.page_uid.clone(),
                     url,
@@ -261,7 +262,7 @@ impl BlogMcpServer {
                 success: true,
                 page: Some(PageWithHtml {
                     page_id: meta.page_uid.clone(),
-                    url: build_page_full_url(&base_url, &meta.page_uid),
+                    url: build_page_full_url(&base_url, &meta.page_uid, &meta.seo.seo_title),
                     meta: meta.into(),
                     html,
                 }),
@@ -384,6 +385,7 @@ impl BlogMcpServer {
                     url: Some(build_page_full_url(
                         &resolve_site_url_from_env(),
                         &saved_meta.page_uid,
+                        &saved_meta.seo.seo_title,
                     )),
                     meta: Some(saved_meta.into()),
                     error: None,
@@ -590,6 +592,7 @@ fn resolve_site_url_from_env() -> String {
     trimmed.to_string()
 }
 
-fn build_page_full_url(base_url: &str, slug: &str) -> String {
-    format!("{}/pages/{}", base_url.trim_end_matches('/'), slug)
+fn build_page_full_url(base_url: &str, page_id: &str, seo_title: &str) -> String {
+    let path = solin_blog::web::build_page_url(page_id, seo_title);
+    format!("{}{}", base_url.trim_end_matches('/'), path)
 }
