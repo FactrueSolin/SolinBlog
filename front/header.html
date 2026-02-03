@@ -13,6 +13,30 @@
     --font-stack: "Hiragino Maru Gothic ProN", "Meiryo", "SF Pro", "Segoe UI", sans-serif;
   }
 
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #F5F4ED;
+    --text: #262624;
+    --primary: #C96442;
+    --border: rgba(35, 35, 45, 0.12);
+    --muted: rgba(38, 38, 36, 0.68);
+    --surface: rgba(255, 255, 255, 0.7);
+    --card-bg: rgba(255, 255, 255, 0.85);
+    --card-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: linear-gradient(135deg, #1e2d40 0%, #2d4059 45%, #3a506b 100%);
+    --text: #e0e7f1;
+    --primary: #a4c3b2;
+    --border: rgba(255, 255, 255, 0.15);
+    --muted: rgba(224, 231, 241, 0.72);
+    --surface: rgba(30, 45, 64, 0.65);
+    --card-bg: rgba(30, 45, 64, 0.72);
+    --card-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  }
+
   @media (prefers-color-scheme: light) {
     :root {
       color-scheme: light;
@@ -96,6 +120,37 @@
     white-space: nowrap;
   }
 
+  .header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    justify-self: end;
+  }
+
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .theme-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow);
+  }
+
+  .theme-toggle svg {
+    width: 20px;
+    height: 20px;
+  }
+
   .nav-link:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(201, 100, 66, 0.25);
@@ -105,6 +160,10 @@
     .site-header__inner {
       grid-template-columns: 1fr;
       text-align: center;
+    }
+
+    .header-actions {
+      justify-self: center;
     }
 
     .nav-link {
@@ -118,6 +177,54 @@
     <h1 class="site-title">
       <a href="/">SolinBlog</a>
     </h1>
-    <a class="nav-link" href="/">首页</a>
+    <div class="header-actions">
+      <a class="nav-link" href="/">首页</a>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切换明暗模式" title="跟随系统">
+        <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-3.2 3.2a.6.6 0 0 1-1-.4V16H6a2 2 0 0 1-2-2V6zm2 0v8h4a1 1 0 0 1 1 1v2.1L13.1 15a1 1 0 0 1 .7-.3H18V6H6z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
   </div>
 </header>
+
+<script>
+  (function () {
+    const themeToggle = document.getElementById("theme-toggle");
+    if (!themeToggle) return;
+
+    const icons = {
+      system: '<svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-3.2 3.2a.6.6 0 0 1-1-.4V16H6a2 2 0 0 1-2-2V6zm2 0v8h4a1 1 0 0 1 1 1v2.1L13.1 15a1 1 0 0 1 .7-.3H18V6H6z" fill="currentColor"/></svg>',
+      light: '<svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.5a1 1 0 0 1 1 1V7a1 1 0 1 1-2 0V5.5a1 1 0 0 1 1-1zm0 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.5-3.5a1 1 0 0 1 1-1H22a1 1 0 1 1 0 2h-1.5a1 1 0 0 1-1-1zM3 11a1 1 0 0 1 1-1h1.5a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1zm13.84-6.34a1 1 0 0 1 1.42 0l1.06 1.06a1 1 0 0 1-1.42 1.42l-1.06-1.06a1 1 0 0 1 0-1.42zM4.26 17.92a1 1 0 0 1 1.42 0l1.06 1.06a1 1 0 0 1-1.42 1.42l-1.06-1.06a1 1 0 0 1 0-1.42zm13.58 1.06a1 1 0 0 1 0-1.42l1.06-1.06a1 1 0 1 1 1.42 1.42l-1.06 1.06a1 1 0 0 1-1.42 0zM4.26 6.08a1 1 0 0 1 0-1.42L5.32 3.6a1 1 0 1 1 1.42 1.42L5.68 6.08a1 1 0 0 1-1.42 0z" fill="currentColor"/></svg>',
+      dark: '<svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.8 3.2a.8.8 0 0 1 .86.96A7 7 0 1 0 19.84 13a.8.8 0 0 1 .96.86A8.5 8.5 0 1 1 12.8 3.2z" fill="currentColor"/></svg>'
+    };
+
+    const order = ["system", "light", "dark"];
+    const stored = localStorage.getItem("theme");
+    let current = order.includes(stored) ? stored : "system";
+
+    const applyTheme = (value) => {
+      const root = document.documentElement;
+      if (value === "light") {
+        root.setAttribute("data-theme", "light");
+      } else if (value === "dark") {
+        root.setAttribute("data-theme", "dark");
+      } else {
+        root.removeAttribute("data-theme");
+      }
+      const titleText = value === "system" ? "跟随系统" : value === "light" ? "明亮模式" : "暗黑模式";
+      themeToggle.innerHTML = icons[value];
+      themeToggle.setAttribute("aria-label", `切换明暗模式（当前：${value === "system" ? "跟随系统" : value === "light" ? "明亮" : "暗黑"}）`);
+      themeToggle.setAttribute("title", titleText);
+    };
+
+    applyTheme(current);
+
+    themeToggle.addEventListener("click", () => {
+      const nextIndex = (order.indexOf(current) + 1) % order.length;
+      current = order[nextIndex];
+      localStorage.setItem("theme", current);
+      applyTheme(current);
+    });
+  })();
+</script>
