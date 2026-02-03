@@ -35,3 +35,14 @@ tokio = { version = "1", features = [
 tokio-util = { version = "0.7" }
 axum = { version = "0.8", features = ["macros"] }
 schemars = "1"
+mime_guess = "2"
+
+[build-dependencies]
+image = { version = "0.25", default-features = false, features = [
+    "gif",
+    "jpeg",
+    "png",
+    "tiff",
+    "webp",
+    "bmp",
+] }

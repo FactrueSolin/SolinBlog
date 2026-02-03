@@ -42,8 +42,15 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
     });
     let mut rows = String::new();
     for (entry, meta) in pages {
-        let title = escape_html(&entry.seo.seo_title);
+        let display_title = if entry.seo.title.is_empty() {
+            &entry.seo.seo_title
+        } else {
+            &entry.seo.title
+        };
+        let title = escape_html(display_title);
         let description = escape_html(&entry.seo.description);
+        let data_title = escape_html_attr(display_title);
+        let data_description = escape_html_attr(&entry.seo.description);
         let keywords = entry
             .seo
             .keywords
@@ -52,12 +59,20 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
             .filter(|value| !value.trim().is_empty())
             .map(|value| escape_html(&value))
             .unwrap_or_else(|| "无".to_string());
+        let data_keywords = entry
+            .seo
+            .keywords
+            .as_ref()
+            .map(|items| items.join(", "))
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| escape_html_attr(&value))
+            .unwrap_or_else(|| "无".to_string());
         let page_id_attr = escape_html_attr(&entry.page_id);
         let url = build_page_url(&entry.page_id, &entry.seo.seo_title);
         let url_attr = escape_html_attr(&url);
         let updated_at = escape_html(&format_display_timestamp(meta.updated_at));
         rows.push_str(&format!(
-            "<article class=\"card\" data-page-id=\"{page_id_attr}\"><div class=\"card-header\"><h2><a href=\"{url_attr}\">{title}</a></h2><span class=\"updated-at\">更新：{updated_at}</span></div><p class=\"description\">{description}</p><div class=\"keywords\"><span>关键词：</span><span class=\"keyword-value\">{keywords}</span></div><div class=\"actions\"><a class=\"read-more\" href=\"{url_attr}\">阅读页面</a></div></article>",
+            "<article class=\"card\" data-page-id=\"{page_id_attr}\" data-title=\"{data_title}\" data-description=\"{data_description}\" data-keywords=\"{data_keywords}\"><div class=\"card-header\"><h2><a href=\"{url_attr}\">{title}</a></h2><span class=\"updated-at\">更新：{updated_at}</span></div><p class=\"description\">{description}</p><div class=\"keywords\"><span>关键词：</span><span class=\"keyword-value\">{keywords}</span></div><div class=\"actions\"><a class=\"read-more\" href=\"{url_attr}\">阅读页面</a></div></article>",
         ));
     }
 
@@ -80,13 +95,23 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
         )
     };
 
+    let site_subtitle = std::env::var("SITE_SUBTITLE")
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let site_subtitle = if site_subtitle.is_empty() {
+        "AI 原生博客 · 最新页面列表".to_string()
+    } else {
+        site_subtitle
+    };
+
     let rendered = replace_template(
         &template,
         &[
             ("site_header", &header_html),
             ("page_list", &rows),
             ("site_title", "SolinBlog"),
-            ("site_subtitle", "AI 原生博客 · 最新页面列表"),
+            ("site_subtitle", &site_subtitle),
             ("beian_number", &beian_html),
         ],
     )?;

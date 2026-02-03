@@ -3,11 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="/public/icon.png">
     <title>{{site_title}}</title>
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #F5F4ED;
+        --bg-fallback: #F5F4ED;
+        --bg-image: url('/public/light.png');
+        --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
         --text: #262624;
         --primary: #C96442;
         --border: rgba(35, 35, 45, 0.12);
@@ -22,7 +25,9 @@
       @media (prefers-color-scheme: light) {
         :root {
           color-scheme: light;
-          --bg: #F5F4ED;
+          --bg-fallback: #F5F4ED;
+          --bg-image: url('/public/light.png');
+          --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
           --text: #262624;
           --primary: #C96442;
           --border: rgba(35, 35, 45, 0.12);
@@ -36,7 +41,9 @@
       @media (prefers-color-scheme: dark) {
         :root {
           color-scheme: dark;
-          --bg: linear-gradient(135deg, #1e2d40 0%, #2d4059 45%, #3a506b 100%);
+          --bg-fallback: linear-gradient(135deg, #1e2d40 0%, #2d4059 45%, #3a506b 100%);
+          --bg-image: url('/public/night.png');
+          --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
           --text: #e0e7f1;
           --primary: #a4c3b2;
           --border: rgba(255, 255, 255, 0.15);
@@ -78,6 +85,47 @@
       header p {
         margin: 0;
         color: var(--muted);
+        font-weight: 700;
+        font-style: italic;
+        font-size: 1.05rem;
+        letter-spacing: 0.08em;
+      }
+
+      .search-bar {
+        margin-top: 16px;
+        position: relative;
+      }
+
+      .search-input {
+        width: 100%;
+        padding: 12px 16px 12px 44px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 15px;
+        outline: none;
+        transition: var(--transition);
+      }
+
+      .search-input::placeholder {
+        color: var(--muted);
+      }
+
+      .search-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.15);
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        color: var(--muted);
+        pointer-events: none;
       }
 
       main.container {
@@ -211,11 +259,37 @@
   <body>
     {{site_header}}
     <header>
-      <p>{{site_subtitle}}</p>
+      <p class="site-subtitle">{{site_subtitle}}</p>
+      <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M10.5 3a7.5 7.5 0 0 1 5.96 12.06l3.22 3.22a1 1 0 1 1-1.42 1.42l-3.22-3.22A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11z" fill="currentColor"/>
+        </svg>
+        <input class="search-input" id="search-input" type="search" placeholder="搜索文章..." aria-label="搜索文章">
+      </div>
     </header>
     <main class="container">
       <section class="card-list">{{page_list}}</section>
     </main>
     {{beian_number}}
+    <script>
+      const searchInput = document.getElementById('search-input');
+      const cards = Array.from(document.querySelectorAll('.card-list .card'));
+
+      const normalize = (value) => (value || '').toLowerCase();
+
+      const applySearch = () => {
+        const query = normalize(searchInput.value.trim());
+        cards.forEach((card) => {
+          const haystack = normalize([
+            card.dataset.title,
+            card.dataset.description,
+            card.dataset.keywords,
+          ].join(' '));
+          card.style.display = query === '' || haystack.includes(query) ? '' : 'none';
+        });
+      };
+
+      searchInput?.addEventListener('input', applySearch);
+    </script>
   </body>
 </html>

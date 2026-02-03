@@ -1,7 +1,9 @@
 <style>
   :root {
     color-scheme: light dark;
-    --bg: #F5F4ED;
+    --bg-fallback: #F5F4ED;
+    --bg-image: url('/public/light.png');
+    --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
     --text: #262624;
     --primary: #C96442;
     --border: rgba(35, 35, 45, 0.12);
@@ -15,7 +17,9 @@
 
   :root[data-theme="light"] {
     color-scheme: light;
-    --bg: #F5F4ED;
+    --bg-fallback: #F5F4ED;
+    --bg-image: url('/public/light.png');
+    --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
     --text: #262624;
     --primary: #C96442;
     --border: rgba(35, 35, 45, 0.12);
@@ -27,7 +31,9 @@
 
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: linear-gradient(135deg, #1e2d40 0%, #2d4059 45%, #3a506b 100%);
+    --bg-fallback: linear-gradient(135deg, #1e2d40 0%, #2d4059 45%, #3a506b 100%);
+    --bg-image: url('/public/night.png');
+    --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
     --text: #e0e7f1;
     --primary: #a4c3b2;
     --border: rgba(255, 255, 255, 0.15);
@@ -40,7 +46,9 @@
   @media (prefers-color-scheme: light) {
     :root {
       color-scheme: light;
-      --bg: #F5F4ED;
+      --bg-fallback: #F5F4ED;
+      --bg-image: url('/public/light.png');
+      --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
       --text: #262624;
       --primary: #C96442;
       --border: rgba(35, 35, 45, 0.12);
@@ -54,7 +62,9 @@
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
-      --bg: linear-gradient(135deg, #1e2d40 0%, #2d4059 45%, #3a506b 100%);
+      --bg-fallback: linear-gradient(135deg, #1e2d40 0%, #2d4059 45%, #3a506b 100%);
+      --bg-image: url('/public/night.png');
+      --bg: var(--bg-image) top center/100% auto repeat-y, var(--bg-fallback);
       --text: #e0e7f1;
       --primary: #a4c3b2;
       --border: rgba(255, 255, 255, 0.15);
