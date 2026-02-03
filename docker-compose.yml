@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  solinblog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: solinblog:latest
+    container_name: solinblog
+    env_file:
+      - .env
+    environment:
+      WEB_HOST: "0.0.0.0"
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./data:/app/data
+      - ./front:/app/front
+    restart: unless-stopped

@@ -1,0 +1,11 @@
+/target
+/.git
+/.github
+/data
+/.env
+/.env.*
+/example
+/dist
+/node_modules
+**/*.log
+.DS_Store

@@ -76,6 +76,7 @@ impl From<PageMeta> for PageMetaResponse {
 struct PushPageResponse {
     success: bool,
     page_id: Option<String>,
+    url: Option<String>,
     meta: Option<PageMetaResponse>,
     error: Option<String>,
 }
@@ -90,6 +91,7 @@ struct GetAllPageResponse {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PageWithMeta {
     page_id: String,
+    url: String,
     meta: PageMetaResponse,
 }
 
@@ -108,6 +110,7 @@ struct GetPageByIdResponse {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PageWithHtml {
     page_id: String,
+    url: String,
     meta: PageMetaResponse,
     html: String,
 }
@@ -130,6 +133,7 @@ struct UpdatePageRequest {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct UpdatePageResponse {
     success: bool,
+    url: Option<String>,
     meta: Option<PageMetaResponse>,
     error: Option<String>,
 }
@@ -171,6 +175,7 @@ impl BlogMcpServer {
             return Ok(Json(PushPageResponse {
                 success: false,
                 page_id: None,
+                url: None,
                 meta: None,
                 error: Some(err.to_string()),
             }));
@@ -178,6 +183,10 @@ impl BlogMcpServer {
 
         match self.store.create_page_auto_uid(&meta, &params.html) {
             Ok(saved_meta) => Ok(Json(PushPageResponse {
+                url: Some(build_page_full_url(
+                    &resolve_site_url_from_env(),
+                    &saved_meta.page_uid,
+                )),
                 success: true,
                 page_id: Some(saved_meta.page_uid.clone()),
                 meta: Some(saved_meta.into()),
@@ -186,6 +195,7 @@ impl BlogMcpServer {
             Err(err) => Ok(Json(PushPageResponse {
                 success: false,
                 page_id: None,
+                url: None,
                 meta: None,
                 error: Some(err.to_string()),
             })),
@@ -205,12 +215,15 @@ impl BlogMcpServer {
             }
         };
 
+        let base_url = resolve_site_url_from_env();
         let mut pages = Vec::new();
         for entry in entries {
             let meta = self.store.get_page_meta(&entry.page_id).ok();
             if let Some(meta) = meta {
+                let url = build_page_full_url(&base_url, &meta.page_uid);
                 pages.push(PageWithMeta {
                     page_id: meta.page_uid.clone(),
+                    url,
                     meta: meta.into(),
                 });
             }
@@ -246,11 +259,13 @@ impl BlogMcpServer {
             }
         };
 
+        let base_url = resolve_site_url_from_env();
         match self.store.load_page(&resolved_id) {
             Ok((meta, html)) => Ok(Json(GetPageByIdResponse {
                 success: true,
                 page: Some(PageWithHtml {
                     page_id: meta.page_uid.clone(),
+                    url: build_page_full_url(&base_url, &meta.page_uid),
                     meta: meta.into(),
                     html,
                 }),
@@ -307,6 +322,7 @@ impl BlogMcpServer {
             Ok(None) => {
                 return Ok(Json(UpdatePageResponse {
                     success: false,
+                    url: None,
                     meta: None,
                     error: Some("page not found".to_string()),
                 }))
@@ -314,6 +330,7 @@ impl BlogMcpServer {
             Err(err) => {
                 return Ok(Json(UpdatePageResponse {
                     success: false,
+                    url: None,
                     meta: None,
                     error: Some(err.to_string()),
                 }))
@@ -325,6 +342,7 @@ impl BlogMcpServer {
             Err(err) => {
                 return Ok(Json(UpdatePageResponse {
                     success: false,
+                    url: None,
                     meta: None,
                     error: Some(err.to_string()),
                 }))
@@ -344,6 +362,7 @@ impl BlogMcpServer {
             if let Err(err) = validate_html(&new_html) {
                 return Ok(Json(UpdatePageResponse {
                     success: false,
+                    url: None,
                     meta: None,
                     error: Some(err.to_string()),
                 }));
@@ -358,6 +377,7 @@ impl BlogMcpServer {
                     Err(err) => {
                         return Ok(Json(UpdatePageResponse {
                             success: false,
+                            url: None,
                             meta: None,
                             error: Some(err.to_string()),
                         }))
@@ -365,12 +385,17 @@ impl BlogMcpServer {
                 };
                 Ok(Json(UpdatePageResponse {
                     success: true,
+                    url: Some(build_page_full_url(
+                        &resolve_site_url_from_env(),
+                        &saved_meta.page_uid,
+                    )),
                     meta: Some(saved_meta.into()),
                     error: None,
                 }))
             }
             Err(err) => Ok(Json(UpdatePageResponse {
                 success: false,
+                url: None,
                 meta: None,
                 error: Some(err.to_string()),
             })),
@@ -534,20 +559,40 @@ async fn token_generator_handler() -> impl IntoResponse {
 }
 
 fn resolve_base_url(headers: &HeaderMap) -> String {
-    if let Ok(value) = std::env::var("SITE_URL") {
-        let trimmed = value.trim().trim_end_matches('/');
-        if !trimmed.is_empty() {
-            return trimmed.to_string();
-        }
-    }
-
-    let host = headers
+    if let Some(host) = headers
         .get("host")
         .and_then(|value| value.to_str().ok())
-        .unwrap_or("127.0.0.1");
-    let scheme = headers
-        .get("x-forwarded-proto")
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("http");
-    format!("{}://{}", scheme, host)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        let scheme = headers
+            .get("x-forwarded-proto")
+            .and_then(|value| value.to_str().ok())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("http");
+        return format!("{}://{}", scheme, host)
+            .trim_end_matches('/')
+            .to_string();
+    }
+
+    let value = std::env::var("SITE_URL").unwrap_or_default();
+    let trimmed = value.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        panic!("SITE_URL is required to resolve base url when request headers are missing");
+    }
+    trimmed.to_string()
+}
+
+fn resolve_site_url_from_env() -> String {
+    let value = std::env::var("SITE_URL").unwrap_or_default();
+    let trimmed = value.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        panic!("SITE_URL is required for MCP URL generation");
+    }
+    trimmed.to_string()
+}
+
+fn build_page_full_url(base_url: &str, slug: &str) -> String {
+    format!("{}/pages/{}", base_url.trim_end_matches('/'), slug)
 }
