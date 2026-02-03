@@ -1,11 +1,12 @@
 use anyhow::{bail, Context, Result};
+use getrandom::getrandom;
+use pinyin::ToPinyin;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use getrandom::getrandom;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeoMeta {
@@ -52,6 +53,40 @@ pub struct PageStore {
     pub base_dir: PathBuf,
 }
 
+/// 将标题转换为 URL 友好的 slug
+/// - 中文转拼音
+/// - 空格和特殊字符转为连字符
+/// - 多个连字符合并为一个
+/// - 转为小写
+pub fn to_url_slug(title: &str) -> String {
+    let mut tokens: Vec<String> = Vec::new();
+    let mut ascii_buf = String::new();
+
+    for ch in title.chars() {
+        if ch.is_ascii_alphanumeric() {
+            ascii_buf.push(ch.to_ascii_lowercase());
+            continue;
+        }
+
+        if !ascii_buf.is_empty() {
+            tokens.push(std::mem::take(&mut ascii_buf));
+        }
+
+        if let Some(pinyin) = ch.to_pinyin() {
+            let plain = pinyin.plain();
+            if !plain.is_empty() {
+                tokens.push(plain.to_ascii_lowercase());
+            }
+        }
+    }
+
+    if !ascii_buf.is_empty() {
+        tokens.push(ascii_buf);
+    }
+
+    tokens.join("-")
+}
+
 impl Default for PageStore {
     fn default() -> Self {
         Self::new("data")
@@ -69,6 +104,7 @@ impl PageStore {
         let index = self.load_index()?;
         let uid = generate_unique_page_uid(&index)?;
         let mut meta_with_uid = meta.clone();
+        meta_with_uid.seo.seo_title = to_url_slug(&meta_with_uid.seo.seo_title);
         meta_with_uid.page_uid = uid.clone();
         self.create_page(&uid, &meta_with_uid, html)?;
         let (saved_meta, _) = self.load_page(&uid)?;
@@ -191,7 +227,9 @@ impl PageStore {
         if !self.page_exists(page_id)? {
             bail!("page not found: {}", page_id);
         }
-        self.save_page(page_id, meta, html)
+        let mut meta_to_update = meta.clone();
+        meta_to_update.seo.seo_title = to_url_slug(&meta_to_update.seo.seo_title);
+        self.save_page(page_id, &meta_to_update, html)
     }
 
     pub fn load_page(&self, page_id: &str) -> Result<(PageMeta, String)> {

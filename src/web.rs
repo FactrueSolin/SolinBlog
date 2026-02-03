@@ -1,26 +1,13 @@
 use crate::store::{PageMeta, PageStore};
 use anyhow::{bail, Context, Result};
 use chrono::{TimeZone, Utc};
-use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
-
-const PATH_SEGMENT_ENCODE_SET: &AsciiSet = &CONTROLS
-    .add(b' ')
-    .add(b'"')
-    .add(b'\'')
-    .add(b'<')
-    .add(b'>')
-    .add(b'`')
-    .add(b'#')
-    .add(b'?')
-    .add(b'{')
-    .add(b'}')
-    .add(b'/')
-    .add(b'\\')
-    .add(b'+');
 
 pub fn build_page_url(page_id: &str, seo_title: &str) -> String {
-    let encoded_title = utf8_percent_encode(seo_title, PATH_SEGMENT_ENCODE_SET).to_string();
-    format!("/pages/{encoded_title}+{page_id}")
+    if seo_title.is_empty() {
+        format!("/pages/{}", page_id)
+    } else {
+        format!("/pages/{}+{}", seo_title, page_id)
+    }
 }
 
 pub fn parse_page_id_from_slug(slug: &str) -> Option<String> {
