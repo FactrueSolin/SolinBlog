@@ -105,9 +105,15 @@ struct PageIdRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+struct GetPageByIdRequest {
+    page_id: Option<String>,
+    ids: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct GetPageByIdResponse {
     success: bool,
-    page: Option<PageWithHtml>,
+    pages: Vec<PageWithHtml>,
     error: Option<String>,
 }
 
@@ -308,47 +314,66 @@ impl BlogMcpServer {
         }))
     }
 
-    #[tool(description = "Get blog page by page_id (page_uid)")]
+    #[tool(description = "Get blog pages by page_id list (page_uid). Supports single page_id for backward compatibility")]
     async fn get_page_by_id(
         &self,
-        Parameters(params): Parameters<PageIdRequest>,
+        Parameters(params): Parameters<GetPageByIdRequest>,
     ) -> Result<Json<GetPageByIdResponse>, String> {
-        let resolved_id = match self.store.resolve_page_id_by_uid(&params.page_id) {
-            Ok(Some(id)) => id,
-            Ok(None) => {
-                return Ok(Json(GetPageByIdResponse {
-                    success: false,
-                    page: None,
-                    error: Some("page not found".to_string()),
-                }));
+        let mut ids = Vec::new();
+        if let Some(single_id) = params.page_id {
+            if !single_id.trim().is_empty() {
+                ids.push(single_id);
             }
-            Err(err) => {
-                return Ok(Json(GetPageByIdResponse {
-                    success: false,
-                    page: None,
-                    error: Some(err.to_string()),
-                }));
-            }
-        };
+        }
+        if let Some(more_ids) = params.ids {
+            ids.extend(more_ids.into_iter().filter(|id| !id.trim().is_empty()));
+        }
+
+        if ids.is_empty() {
+            return Ok(Json(GetPageByIdResponse {
+                success: false,
+                pages: Vec::new(),
+                error: Some("ids is empty".to_string()),
+            }));
+        }
 
         let base_url = resolve_site_url_from_env();
-        match self.store.load_page(&resolved_id) {
-            Ok((meta, html)) => Ok(Json(GetPageByIdResponse {
-                success: true,
-                page: Some(PageWithHtml {
+        let mut pages = Vec::new();
+        let mut errors = Vec::new();
+
+        for page_id in ids {
+            let resolved_id = match self.store.resolve_page_id_by_uid(&page_id) {
+                Ok(Some(id)) => id,
+                Ok(None) => {
+                    errors.push(format!("page not found: {page_id}"));
+                    continue;
+                }
+                Err(err) => {
+                    errors.push(format!("resolve page failed: {page_id}: {err}"));
+                    continue;
+                }
+            };
+
+            match self.store.load_page(&resolved_id) {
+                Ok((meta, html)) => pages.push(PageWithHtml {
                     page_id: meta.page_uid.clone(),
                     url: build_page_full_url(&base_url, &meta.page_uid, &meta.seo.seo_title),
                     meta: meta.into(),
                     html,
                 }),
-                error: None,
-            })),
-            Err(err) => Ok(Json(GetPageByIdResponse {
-                success: false,
-                page: None,
-                error: Some(err.to_string()),
-            })),
+                Err(err) => errors.push(format!("load page failed: {page_id}: {err}")),
+            }
         }
+
+        Ok(Json(GetPageByIdResponse {
+            success: errors.is_empty(),
+            pages,
+            error: if errors.is_empty() {
+                None
+            } else {
+                Some(errors.join("; "))
+            },
+        }))
     }
 
     #[tool(description = "Delete blog page by page_id (page_uid)")]
