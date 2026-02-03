@@ -24,7 +24,8 @@ use std::sync::Arc;
 
 use solin_blog::store::{PageMeta, PageStore, validate_html};
 use solin_blog::web::{
-    parse_page_id_from_slug, render_index_html, render_page_html, render_sitemap_xml,
+    parse_page_id_from_slug, render_index_html, render_markdown_page, render_page_html,
+    render_sitemap_xml,
 };
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -33,6 +34,14 @@ struct PushPageRequest {
     description: String,
     keywords: Option<Vec<String>>,
     html: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+struct PushMarkdownRequest {
+    seo_title: String,
+    description: String,
+    keywords: Option<Vec<String>>,
+    markdown: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -178,6 +187,70 @@ impl BlogMcpServer {
         }
 
         match self.store.create_page_auto_uid(&meta, &params.html) {
+            Ok(saved_meta) => Ok(Json(PushPageResponse {
+                url: Some(build_page_full_url(
+                    &resolve_site_url_from_env(),
+                    &saved_meta.page_uid,
+                    &saved_meta.seo.seo_title,
+                )),
+                success: true,
+                page_id: Some(saved_meta.page_uid.clone()),
+                meta: Some(saved_meta.into()),
+                error: None,
+            })),
+            Err(err) => Ok(Json(PushPageResponse {
+                success: false,
+                page_id: None,
+                url: None,
+                meta: None,
+                error: Some(err.to_string()),
+            })),
+        }
+    }
+
+    #[tool(description = "推送一篇 Markdown 格式的博客文章")]
+    async fn push_markdown(
+        &self,
+        Parameters(req): Parameters<PushMarkdownRequest>,
+    ) -> Result<Json<PushPageResponse>, String> {
+        let html = match render_markdown_page(&req.markdown) {
+            Ok(rendered) => rendered,
+            Err(err) => {
+                return Ok(Json(PushPageResponse {
+                    success: false,
+                    page_id: None,
+                    url: None,
+                    meta: None,
+                    error: Some(err.to_string()),
+                }));
+            }
+        };
+
+        if let Err(err) = validate_html(&html) {
+            return Ok(Json(PushPageResponse {
+                success: false,
+                page_id: None,
+                url: None,
+                meta: None,
+                error: Some(err.to_string()),
+            }));
+        }
+
+        let meta = PageMeta {
+            seo: solin_blog::store::SeoMeta {
+                seo_title: req.seo_title,
+                description: req.description,
+                keywords: req.keywords,
+                extra: Default::default(),
+            },
+            page_uid: String::new(),
+            created_at: 0,
+            updated_at: 0,
+            view_count: 0,
+            extra: Default::default(),
+        };
+
+        match self.store.create_page_auto_uid(&meta, &html) {
             Ok(saved_meta) => Ok(Json(PushPageResponse {
                 url: Some(build_page_full_url(
                     &resolve_site_url_from_env(),
@@ -409,7 +482,7 @@ impl ServerHandler for BlogMcpServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation::from_build_env(),
             instructions: Some(
-                "This server provides tools: push_page, get_all_page, get_page_by_id, delete_page, update_page."
+                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page."
                     .to_string(),
             ),
         }

@@ -1,5 +1,6 @@
 use crate::store::{PageMeta, PageStore};
 use anyhow::{bail, Context, Result};
+use pulldown_cmark::{Options, Parser, html};
 use chrono::{TimeZone, Utc};
 
 pub fn build_page_url(page_id: &str, seo_title: &str) -> String {
@@ -89,6 +90,27 @@ fn replace_template(template: &str, values: &[(&str, &str)]) -> Result<String> {
 
 pub fn render_page_html(meta: &PageMeta, html: &str) -> String {
     inject_seo_meta(html, &meta.seo)
+}
+
+pub fn markdown_to_html(markdown: &str) -> String {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TASKLISTS);
+
+    let parser = Parser::new_ext(markdown, options);
+    let mut output = String::new();
+    html::push_html(&mut output, parser);
+    output
+}
+
+pub fn render_markdown_page(markdown: &str) -> Result<String> {
+    let markdown_html = markdown_to_html(markdown);
+    let template = std::fs::read_to_string("front/markdown.html")
+        .context("read front/markdown.html template")?;
+    let rendered = replace_template(&template, &[("markdown_html", &markdown_html)])?;
+    Ok(rendered)
 }
 
 pub fn render_sitemap_xml(store: &PageStore, base_url: &str) -> Result<String> {
