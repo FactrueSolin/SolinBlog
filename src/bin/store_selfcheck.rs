@@ -98,6 +98,7 @@ fn main() -> Result<()> {
 
     let meta = PageMeta {
         seo: SeoMeta {
+            title: "Store Selfcheck".to_string(),
             seo_title: "Store Selfcheck".to_string(),
             description: "CRUD selfcheck for store".to_string(),
             keywords: Some(vec!["selfcheck".to_string(), "store".to_string()]),
@@ -147,6 +148,7 @@ fn main() -> Result<()> {
 
     let meta2 = PageMeta {
         seo: SeoMeta {
+            title: "Store Selfcheck Updated".to_string(),
             seo_title: "Store Selfcheck Updated".to_string(),
             description: "Updated description".to_string(),
             keywords: Some(vec!["selfcheck".to_string(), "update".to_string()]),

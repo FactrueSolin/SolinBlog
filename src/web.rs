@@ -107,7 +107,12 @@ fn replace_template(template: &str, values: &[(&str, &str)]) -> Result<String> {
 }
 
 pub fn render_page_html(meta: &PageMeta, html: &str) -> String {
-    inject_seo_meta(html, &meta.seo)
+    let title = if meta.seo.title.is_empty() {
+        &meta.seo.seo_title
+    } else {
+        &meta.seo.title
+    };
+    inject_seo_meta(html, title, &meta.seo)
 }
 
 pub fn markdown_to_html(markdown: &str) -> String {
@@ -167,8 +172,8 @@ pub fn render_sitemap_xml(store: &PageStore, base_url: &str) -> Result<String> {
     ))
 }
 
-pub fn inject_seo_meta(html: &str, seo: &crate::store::SeoMeta) -> String {
-    let escaped_title = escape_html(&seo.seo_title);
+pub fn inject_seo_meta(html: &str, title: &str, seo: &crate::store::SeoMeta) -> String {
+    let escaped_title = escape_html(title);
     let escaped_description = escape_html_attr(&seo.description);
     let keywords = seo
         .keywords

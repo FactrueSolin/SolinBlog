@@ -164,6 +164,7 @@ impl BlogMcpServer {
     ) -> Result<Json<PushPageResponse>, String> {
         let meta = PageMeta {
             seo: solin_blog::store::SeoMeta {
+                title: params.seo_title.clone(),
                 seo_title: params.seo_title,
                 description: params.description,
                 keywords: params.keywords,
@@ -238,6 +239,7 @@ impl BlogMcpServer {
 
         let meta = PageMeta {
             seo: solin_blog::store::SeoMeta {
+                title: req.seo_title.clone(),
                 seo_title: req.seo_title,
                 description: req.description,
                 keywords: req.keywords,

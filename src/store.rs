@@ -10,7 +10,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeoMeta {
-    #[serde(alias = "title")]
+    #[serde(default)]
+    pub title: String,
     pub seo_title: String,
     pub description: String,
     pub keywords: Option<Vec<String>>,
@@ -104,6 +105,9 @@ impl PageStore {
         let index = self.load_index()?;
         let uid = generate_unique_page_uid(&index)?;
         let mut meta_with_uid = meta.clone();
+        if meta_with_uid.seo.title.is_empty() {
+            meta_with_uid.seo.title = meta_with_uid.seo.seo_title.clone();
+        }
         meta_with_uid.seo.seo_title = to_url_slug(&meta_with_uid.seo.seo_title);
         meta_with_uid.page_uid = uid.clone();
         self.create_page(&uid, &meta_with_uid, html)?;
@@ -189,6 +193,9 @@ impl PageStore {
         let created_at = existing_created_at.or(fallback_created_at).unwrap_or(now_ts);
         let updated_at = now_ts;
         let mut meta_to_write = meta.clone();
+        if meta_to_write.seo.title.is_empty() {
+            meta_to_write.seo.title = meta_to_write.seo.seo_title.clone();
+        }
         meta_to_write.page_uid = page_uid.clone();
         meta_to_write.created_at = created_at;
         meta_to_write.updated_at = updated_at;
@@ -228,6 +235,9 @@ impl PageStore {
             bail!("page not found: {}", page_id);
         }
         let mut meta_to_update = meta.clone();
+        if meta_to_update.seo.title.is_empty() {
+            meta_to_update.seo.title = meta_to_update.seo.seo_title.clone();
+        }
         meta_to_update.seo.seo_title = to_url_slug(&meta_to_update.seo.seo_title);
         self.save_page(page_id, &meta_to_update, html)
     }
@@ -306,6 +316,9 @@ impl PageStore {
         let created_at = existing_created_at.or(fallback_created_at).unwrap_or(now_ts);
         let updated_at = now_ts;
         let mut meta_to_write = meta.clone();
+        if meta_to_write.seo.title.is_empty() {
+            meta_to_write.seo.title = meta_to_write.seo.seo_title.clone();
+        }
         meta_to_write.page_uid = page_uid.clone();
         meta_to_write.created_at = created_at;
         meta_to_write.updated_at = updated_at;
