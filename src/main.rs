@@ -1,27 +1,20 @@
 use axum::{
+    Router,
     body::Body,
     extract::{Path, State},
-    http::{header::CONTENT_TYPE, HeaderMap, Request, StatusCode},
+    http::{HeaderMap, Request, StatusCode, header::CONTENT_TYPE},
     middleware::{self, Next},
     response::{Html, IntoResponse, Response},
     routing::get,
-    Router,
 };
 use getrandom::getrandom;
 use rmcp::{
     ServerHandler,
-    handler::server::{
-        router::tool::ToolRouter,
-        tool::Parameters,
-        wrapper::Json,
-    },
-    model::{
-        Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
-    },
+    handler::server::{router::tool::ToolRouter, tool::Parameters, wrapper::Json},
+    model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
     tool, tool_handler, tool_router,
     transport::streamable_http_server::{
-        session::local::LocalSessionManager, StreamableHttpServerConfig,
-        StreamableHttpService,
+        StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
     },
 };
 use schemars::JsonSchema;
@@ -155,7 +148,7 @@ impl BlogMcpServer {
         }
     }
 
-    #[tool(description = "Create a new page and return its page_id (page_uid)")]
+    #[tool(description = "Create a new blog page and return its page_id (page_uid)")]
     async fn push_page(
         &self,
         Parameters(params): Parameters<PushPageRequest>,
@@ -205,7 +198,7 @@ impl BlogMcpServer {
         }
     }
 
-    #[tool(description = "List all page metadata")]
+    #[tool(description = "List all blog page metadata")]
     async fn get_all_page(&self) -> Result<Json<GetAllPageResponse>, String> {
         let entries = match self.store.list_page_entries() {
             Ok(entries) => entries,
@@ -214,7 +207,7 @@ impl BlogMcpServer {
                     success: false,
                     pages: Vec::new(),
                     error: Some(err.to_string()),
-                }))
+                }));
             }
         };
 
@@ -239,7 +232,7 @@ impl BlogMcpServer {
         }))
     }
 
-    #[tool(description = "Get page by page_id (page_uid)")]
+    #[tool(description = "Get blog page by page_id (page_uid)")]
     async fn get_page_by_id(
         &self,
         Parameters(params): Parameters<PageIdRequest>,
@@ -251,14 +244,14 @@ impl BlogMcpServer {
                     success: false,
                     page: None,
                     error: Some("page not found".to_string()),
-                }))
+                }));
             }
             Err(err) => {
                 return Ok(Json(GetPageByIdResponse {
                     success: false,
                     page: None,
                     error: Some(err.to_string()),
-                }))
+                }));
             }
         };
 
@@ -282,7 +275,7 @@ impl BlogMcpServer {
         }
     }
 
-    #[tool(description = "Delete page by page_id (page_uid)")]
+    #[tool(description = "Delete blog page by page_id (page_uid)")]
     async fn delete_page(
         &self,
         Parameters(params): Parameters<PageIdRequest>,
@@ -293,13 +286,13 @@ impl BlogMcpServer {
                 return Ok(Json(DeletePageResponse {
                     success: false,
                     error: Some("page not found".to_string()),
-                }))
+                }));
             }
             Err(err) => {
                 return Ok(Json(DeletePageResponse {
                     success: false,
                     error: Some(err.to_string()),
-                }))
+                }));
             }
         };
 
@@ -315,7 +308,7 @@ impl BlogMcpServer {
         }
     }
 
-    #[tool(description = "Update page by page_id (page_uid)")]
+    #[tool(description = "Update blog page by page_id (page_uid)")]
     async fn update_page(
         &self,
         Parameters(params): Parameters<UpdatePageRequest>,
@@ -328,7 +321,7 @@ impl BlogMcpServer {
                     url: None,
                     meta: None,
                     error: Some("page not found".to_string()),
-                }))
+                }));
             }
             Err(err) => {
                 return Ok(Json(UpdatePageResponse {
@@ -336,7 +329,7 @@ impl BlogMcpServer {
                     url: None,
                     meta: None,
                     error: Some(err.to_string()),
-                }))
+                }));
             }
         };
 
@@ -348,7 +341,7 @@ impl BlogMcpServer {
                     url: None,
                     meta: None,
                     error: Some(err.to_string()),
-                }))
+                }));
             }
         };
 
@@ -383,7 +376,7 @@ impl BlogMcpServer {
                             url: None,
                             meta: None,
                             error: Some(err.to_string()),
-                        }))
+                        }));
                     }
                 };
                 Ok(Json(UpdatePageResponse {
@@ -503,7 +496,10 @@ async fn log_request(req: Request<Body>, next: Next) -> Response {
     response
 }
 
-async fn index_handler(State(store): State<Arc<PageStore>>, _headers: HeaderMap) -> impl IntoResponse {
+async fn index_handler(
+    State(store): State<Arc<PageStore>>,
+    _headers: HeaderMap,
+) -> impl IntoResponse {
     match render_index_html(&store) {
         Ok(html) => Html(html).into_response(),
         Err(err) => (
@@ -534,11 +530,7 @@ async fn page_handler(
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
     let Some(page_id) = parse_page_id_from_slug(&slug) else {
-        return (
-            StatusCode::NOT_FOUND,
-            format!("invalid page slug: {slug}"),
-        )
-            .into_response();
+        return (StatusCode::NOT_FOUND, format!("invalid page slug: {slug}")).into_response();
     };
     match store.load_page(&page_id) {
         Ok((meta, html)) => {
@@ -548,11 +540,7 @@ async fn page_handler(
             }
             Html(rendered).into_response()
         }
-        Err(err) => (
-            StatusCode::NOT_FOUND,
-            format!("page not found: {err}"),
-        )
-            .into_response(),
+        Err(err) => (StatusCode::NOT_FOUND, format!("page not found: {err}")).into_response(),
     }
 }
 
