@@ -7,6 +7,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY front ./front
+COPY public ./public
 
 RUN cargo build --release --bin SolinBlog
 
@@ -18,11 +19,12 @@ ENV WEB_PORT=3002
 WORKDIR /app
 
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser \
-    && mkdir -p /app/data /app/front \
+    && mkdir -p /app/data /app/front /app/public \
     && chown -R appuser:appuser /app
 
 COPY --from=builder /app/target/release/SolinBlog /app/solinblog
 COPY --from=builder /app/front /app/front
+COPY --from=builder /app/public /app/public
 
 USER appuser
 
