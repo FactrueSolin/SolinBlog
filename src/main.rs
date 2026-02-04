@@ -29,8 +29,8 @@ use std::sync::Arc;
 use solin_blog::image::{ImageSearchResponse, search_images};
 use solin_blog::store::{PageMeta, PageStore, validate_html};
 use solin_blog::web::{
-    parse_page_id_from_slug, render_index_html, render_markdown_page, render_page_html,
-    render_sitemap_xml,
+    parse_page_id_from_slug, render_404_html, render_index_html, render_markdown_page,
+    render_page_html, render_sitemap_xml,
 };
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -828,7 +828,14 @@ async fn page_handler(
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
     let Some(page_id) = parse_page_id_from_slug(&slug) else {
-        return (StatusCode::NOT_FOUND, format!("invalid page slug: {slug}")).into_response();
+        return match render_404_html() {
+            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("render 404 failed: {err}"),
+            )
+                .into_response(),
+        };
     };
     match store.load_page(&page_id) {
         Ok((meta, html)) => {
@@ -838,7 +845,14 @@ async fn page_handler(
             }
             Html(rendered).into_response()
         }
-        Err(err) => (StatusCode::NOT_FOUND, format!("page not found: {err}")).into_response(),
+        Err(_err) => match render_404_html() {
+            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("render 404 failed: {err}"),
+            )
+                .into_response(),
+        },
     }
 }
 
@@ -855,16 +869,37 @@ async fn token_generator_handler() -> impl IntoResponse {
 
 async fn public_asset_handler(Path(path): Path<String>) -> impl IntoResponse {
     if path.is_empty() {
-        return StatusCode::NOT_FOUND.into_response();
+        return match render_404_html() {
+            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("render 404 failed: {err}"),
+            )
+                .into_response(),
+        };
     }
     let Ok(safe_path) = sanitize_public_path(&path) else {
-        return StatusCode::NOT_FOUND.into_response();
+        return match render_404_html() {
+            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("render 404 failed: {err}"),
+            )
+                .into_response(),
+        };
     };
     let full_path = PathBuf::from("public").join(&safe_path);
     let data = match std::fs::read(&full_path) {
         Ok(data) => data,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return StatusCode::NOT_FOUND.into_response();
+            return match render_404_html() {
+                Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
+                Err(err) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("render 404 failed: {err}"),
+                )
+                    .into_response(),
+            };
         }
         Err(err) => {
             return (

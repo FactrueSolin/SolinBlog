@@ -119,6 +119,15 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
     Ok(rendered)
 }
 
+pub fn render_404_html() -> Result<String> {
+    let header_html = std::fs::read_to_string("front/header.html")
+        .context("read front/header.html template")?;
+    let template = std::fs::read_to_string("front/404.html")
+        .context("read front/404.html template")?;
+    let rendered = replace_template(&template, &[("site_header", &header_html)])?;
+    Ok(rendered)
+}
+
 fn replace_template(template: &str, values: &[(&str, &str)]) -> Result<String> {
     let mut out = template.to_string();
     for (key, value) in values {
