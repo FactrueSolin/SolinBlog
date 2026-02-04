@@ -25,6 +25,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use solin_blog::store::{PageMeta, PageStore, validate_html};
+use solin_blog::image::{ImageSearchResponse, search_images};
 use solin_blog::web::{
     parse_page_id_from_slug, render_index_html, render_markdown_page, render_page_html,
     render_sitemap_xml,
@@ -148,6 +149,12 @@ struct UpdatePageResponse {
     url: Option<String>,
     meta: Option<PageMetaResponse>,
     error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+struct ImageSearchRequest {
+    keywords: Vec<String>,
+    limit: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -501,6 +508,15 @@ impl BlogMcpServer {
             })),
         }
     }
+
+    #[tool(description = "Search images via SearXNG")]
+    async fn search_images(
+        &self,
+        Parameters(params): Parameters<ImageSearchRequest>,
+    ) -> Result<Json<ImageSearchResponse>, String> {
+        let limit = params.limit.unwrap_or(50);
+        Ok(Json(search_images(&params.keywords, limit).await))
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -511,7 +527,7 @@ impl ServerHandler for BlogMcpServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation::from_build_env(),
             instructions: Some(
-                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page."
+                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page, search_images."
                     .to_string(),
             ),
         }
