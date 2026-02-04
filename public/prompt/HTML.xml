@@ -1,0 +1,13 @@
+<info>
+    这是制作html网页的风格参考
+    <examples>
+        css风格参考:
+        <info>
+            {{EXAMPLE_CSS}}
+        </info>
+        html风格参考：
+        <info>
+            {{EXAMPLE_HTML}}
+        </info>
+    </examples>
+</info>

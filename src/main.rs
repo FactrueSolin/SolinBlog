@@ -7,13 +7,14 @@ use axum::{
     response::{Html, IntoResponse, Response},
     routing::get,
 };
-use mime_guess::MimeGuess;
-use std::path::{Component, Path as FsPath, PathBuf};
 use getrandom::getrandom;
+use mime_guess::MimeGuess;
 use rmcp::{
-    ServerHandler,
+    ErrorData as McpError, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters, wrapper::Json},
-    model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
+    model::{
+        CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
+    },
     tool, tool_handler, tool_router,
     transport::streamable_http_server::{
         StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
@@ -22,10 +23,11 @@ use rmcp::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
+use std::path::{Component, Path as FsPath, PathBuf};
 use std::sync::Arc;
 
-use solin_blog::store::{PageMeta, PageStore, validate_html};
 use solin_blog::image::{ImageSearchResponse, search_images};
+use solin_blog::store::{PageMeta, PageStore, validate_html};
 use solin_blog::web::{
     parse_page_id_from_slug, render_index_html, render_markdown_page, render_page_html,
     render_sitemap_xml,
@@ -144,6 +146,15 @@ struct UpdatePageRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+struct UpdateMarkdownPageRequest {
+    page_id: String,
+    seo_title: Option<String>,
+    description: Option<String>,
+    keywords: Option<Vec<String>>,
+    markdown: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct UpdatePageResponse {
     success: bool,
     url: Option<String>,
@@ -155,6 +166,30 @@ struct UpdatePageResponse {
 struct ImageSearchRequest {
     keywords: Vec<String>,
     limit: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum BlogStyle {
+    PplxStyle,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum HtmlStyleType {
+    Default,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct GetBlogStyleRequest {
+    /// 博文风格类型
+    style: BlogStyle,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct GetHtmlStyleRequest {
+    /// HTML 风格类型
+    style: HtmlStyleType,
 }
 
 #[derive(Clone)]
@@ -323,7 +358,9 @@ impl BlogMcpServer {
         }))
     }
 
-    #[tool(description = "Get blog pages by page_id list (page_uid). Supports single page_id for backward compatibility")]
+    #[tool(
+        description = "Get blog pages by page_id list (page_uid). Supports single page_id for backward compatibility"
+    )]
     async fn get_page_by_id(
         &self,
         Parameters(params): Parameters<GetPageByIdRequest>,
@@ -509,6 +546,108 @@ impl BlogMcpServer {
         }
     }
 
+    #[tool(description = "Update markdown blog page by page_id (page_uid)")]
+    async fn update_markdown_page(
+        &self,
+        Parameters(params): Parameters<UpdateMarkdownPageRequest>,
+    ) -> Result<Json<UpdatePageResponse>, String> {
+        let resolved_id = match self.store.resolve_page_id_by_uid(&params.page_id) {
+            Ok(Some(id)) => id,
+            Ok(None) => {
+                return Ok(Json(UpdatePageResponse {
+                    success: false,
+                    url: None,
+                    meta: None,
+                    error: Some("page not found".to_string()),
+                }));
+            }
+            Err(err) => {
+                return Ok(Json(UpdatePageResponse {
+                    success: false,
+                    url: None,
+                    meta: None,
+                    error: Some(err.to_string()),
+                }));
+            }
+        };
+
+        let (mut meta, mut html) = match self.store.load_page(&resolved_id) {
+            Ok(data) => data,
+            Err(err) => {
+                return Ok(Json(UpdatePageResponse {
+                    success: false,
+                    url: None,
+                    meta: None,
+                    error: Some(err.to_string()),
+                }));
+            }
+        };
+
+        if let Some(seo_title) = params.seo_title {
+            meta.seo.seo_title = seo_title;
+        }
+        if let Some(description) = params.description {
+            meta.seo.description = description;
+        }
+        if let Some(keywords) = params.keywords {
+            meta.seo.keywords = Some(keywords);
+        }
+        if let Some(markdown) = params.markdown {
+            let rendered = match render_markdown_page(&markdown) {
+                Ok(rendered) => rendered,
+                Err(err) => {
+                    return Ok(Json(UpdatePageResponse {
+                        success: false,
+                        url: None,
+                        meta: None,
+                        error: Some(err.to_string()),
+                    }));
+                }
+            };
+            if let Err(err) = validate_html(&rendered) {
+                return Ok(Json(UpdatePageResponse {
+                    success: false,
+                    url: None,
+                    meta: None,
+                    error: Some(err.to_string()),
+                }));
+            }
+            html = rendered;
+        }
+
+        match self.store.update_page(&resolved_id, &meta, &html) {
+            Ok(_) => {
+                let (saved_meta, _) = match self.store.load_page(&resolved_id) {
+                    Ok(data) => data,
+                    Err(err) => {
+                        return Ok(Json(UpdatePageResponse {
+                            success: false,
+                            url: None,
+                            meta: None,
+                            error: Some(err.to_string()),
+                        }));
+                    }
+                };
+                Ok(Json(UpdatePageResponse {
+                    success: true,
+                    url: Some(build_page_full_url(
+                        &resolve_site_url_from_env(),
+                        &saved_meta.page_uid,
+                        &saved_meta.seo.seo_title,
+                    )),
+                    meta: Some(saved_meta.into()),
+                    error: None,
+                }))
+            }
+            Err(err) => Ok(Json(UpdatePageResponse {
+                success: false,
+                url: None,
+                meta: None,
+                error: Some(err.to_string()),
+            })),
+        }
+    }
+
     #[tool(description = "Search images via SearXNG")]
     async fn search_images(
         &self,
@@ -517,6 +656,42 @@ impl BlogMcpServer {
         let limit = params.limit.unwrap_or(50);
         Ok(Json(search_images(&params.keywords, limit).await))
     }
+
+    #[tool(name = "get_blog_style", description = "获取指定的博文写作风格指南")]
+    async fn get_blog_style(
+        &self,
+        Parameters(params): Parameters<GetBlogStyleRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let style = &params.style;
+        let content = match style {
+            BlogStyle::PplxStyle => std::fs::read_to_string("public/prompt/PPLX.xml")
+                .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?,
+        };
+        Ok(CallToolResult::success(vec![Content::text(content)]))
+    }
+
+    #[tool(
+        name = "get_html_style",
+        description = "获取 HTML 风格参考，1. 用户未指定样式，则默认为default。2. 在制作HTML博文时需先获得参考样式"
+    )]
+    async fn get_html_style(
+        &self,
+        Parameters(params): Parameters<GetHtmlStyleRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let style = &params.style;
+        let template = match style {
+            HtmlStyleType::Default => std::fs::read_to_string("public/prompt/HTML.xml")
+                .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?,
+        };
+        let example_css = std::fs::read_to_string("front/example.css")
+            .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?;
+        let example_html = std::fs::read_to_string("front/index.html")
+            .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?;
+        let content = template
+            .replace("{{EXAMPLE_CSS}}", &example_css)
+            .replace("{{EXAMPLE_HTML}}", &example_html);
+        Ok(CallToolResult::success(vec![Content::text(content)]))
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -524,10 +699,12 @@ impl ServerHandler for BlogMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             protocol_version: ProtocolVersion::V_2024_11_05,
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .build(),
             server_info: Implementation::from_build_env(),
             instructions: Some(
-                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page, search_images."
+                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page, update_markdown_page, search_images, get_blog_style, get_html_style."
                     .to_string(),
             ),
         }
