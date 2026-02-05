@@ -115,6 +115,25 @@ impl PageStore {
         Ok(saved_meta)
     }
 
+    pub fn create_page_auto_uid_with_markdown(
+        &self,
+        meta: &PageMeta,
+        html: &str,
+        markdown: Option<&str>,
+    ) -> Result<PageMeta> {
+        let index = self.load_index()?;
+        let uid = generate_unique_page_uid(&index)?;
+        let mut meta_with_uid = meta.clone();
+        if meta_with_uid.seo.title.is_empty() {
+            meta_with_uid.seo.title = meta_with_uid.seo.seo_title.clone();
+        }
+        meta_with_uid.seo.seo_title = to_url_slug(&meta_with_uid.seo.seo_title);
+        meta_with_uid.page_uid = uid.clone();
+        self.save_page_with_markdown(&uid, &meta_with_uid, html, markdown)?;
+        let (saved_meta, _) = self.load_page(&uid)?;
+        Ok(saved_meta)
+    }
+
     pub fn resolve_page_id_by_uid(&self, page_uid: &str) -> Result<Option<String>> {
         let index = self.load_index()?;
         if index.pages.contains_key(page_uid) {
@@ -141,6 +160,16 @@ impl PageStore {
     }
 
     pub fn save_page(&self, page_id: &str, meta: &PageMeta, html: &str) -> Result<()> {
+        self.save_page_with_markdown(page_id, meta, html, None)
+    }
+
+    pub fn save_page_with_markdown(
+        &self,
+        page_id: &str,
+        meta: &PageMeta,
+        html: &str,
+        markdown: Option<&str>,
+    ) -> Result<()> {
         fs::create_dir_all(&self.base_dir)
             .with_context(|| format!("create base dir {:?}", self.base_dir))?;
 
@@ -151,6 +180,7 @@ impl PageStore {
 
         let meta_path = page_dir.join("meta.json");
         let html_path = page_dir.join("index.html");
+        let markdown_path = page_dir.join("content.md");
 
         let mut index = self.load_index()?;
         let existing_meta = if meta_path.exists() {
@@ -203,6 +233,9 @@ impl PageStore {
         let meta_bytes =
             serde_json::to_vec_pretty(&meta_to_write).context("serialize meta.json")?;
         atomic_write(&meta_path, &meta_bytes).context("write meta.json")?;
+        if let Some(markdown) = markdown {
+            atomic_write(&markdown_path, markdown.as_bytes()).context("write content.md")?;
+        }
         validate_html(html).context("validate html")?;
         atomic_write(&html_path, html.as_bytes()).context("write index.html")?;
         let original_id = index
@@ -256,6 +289,18 @@ impl PageStore {
             .with_context(|| format!("read index.html {:?}", html_path))?;
 
         Ok((meta, html))
+    }
+
+    pub fn load_page_markdown(&self, page_id: &str) -> Result<Option<String>> {
+        let safe_id = sanitize_page_id(page_id);
+        let page_dir = self.base_dir.join(&safe_id);
+        let markdown_path = page_dir.join("content.md");
+        if !markdown_path.exists() {
+            return Ok(None);
+        }
+        let markdown = fs::read_to_string(&markdown_path)
+            .with_context(|| format!("read content.md {:?}", markdown_path))?;
+        Ok(Some(markdown))
     }
 
     pub fn get_page_meta(&self, page_id: &str) -> Result<PageMeta> {
@@ -359,6 +404,68 @@ impl PageStore {
         let html_path = self.base_dir.join(&safe_id).join("index.html");
         validate_html(html).context("validate html")?;
         atomic_write(&html_path, html.as_bytes()).context("write index.html")?;
+
+        let meta_path = self.base_dir.join(&safe_id).join("meta.json");
+        let meta_raw = fs::read_to_string(&meta_path)
+            .with_context(|| format!("read meta.json {:?}", meta_path))?;
+        let mut meta: PageMeta = serde_json::from_str(&meta_raw).context("parse meta.json")?;
+        let mut index = self.load_index()?;
+        let now_ts = now_unix_seconds()?;
+        let index_uid = index
+            .pages
+            .get(&safe_id)
+            .map(|entry| entry.page_uid.clone())
+            .filter(|uid| !uid.is_empty());
+        let meta_uid = if meta.page_uid.is_empty() {
+            None
+        } else {
+            Some(meta.page_uid.clone())
+        };
+        let page_uid = match meta_uid.or(index_uid) {
+            Some(uid) => uid,
+            None => generate_unique_page_uid(&index)?,
+        };
+        if meta.created_at <= 0 {
+            meta.created_at = now_ts;
+        }
+        meta.updated_at = now_ts;
+        meta.page_uid = page_uid.clone();
+        let meta_bytes = serde_json::to_vec_pretty(&meta).context("serialize meta.json")?;
+        atomic_write(&meta_path, &meta_bytes).context("write meta.json")?;
+
+        let original_id = index
+            .pages
+            .get(&safe_id)
+            .and_then(|entry| entry.original_id.clone())
+            .or_else(|| {
+                if safe_id == page_id {
+                    None
+                } else {
+                    Some(page_id.to_string())
+                }
+            });
+        index.pages.insert(
+            safe_id.clone(),
+            PageIndexEntry {
+                page_id: safe_id,
+                seo: meta.seo.clone(),
+                page_uid,
+                original_id,
+            },
+        );
+        self.save_index(&index)?;
+
+        Ok(())
+    }
+
+    pub fn update_page_markdown(&self, page_id: &str, markdown: &str) -> Result<()> {
+        if !self.page_exists(page_id)? {
+            bail!("page not found: {}", page_id);
+        }
+
+        let safe_id = sanitize_page_id(page_id);
+        let markdown_path = self.base_dir.join(&safe_id).join("content.md");
+        atomic_write(&markdown_path, markdown.as_bytes()).context("write content.md")?;
 
         let meta_path = self.base_dir.join(&safe_id).join("meta.json");
         let meta_raw = fs::read_to_string(&meta_path)
