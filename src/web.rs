@@ -286,9 +286,9 @@ fn remove_head_seo_tags(head_html: &str) -> String {
     let mut result = String::new();
     let bytes = head_html.as_bytes();
     let mut index = 0usize;
+    let mut copy_from = 0usize;
     while index < bytes.len() {
         if bytes[index] != b'<' {
-            result.push(bytes[index] as char);
             index += 1;
             continue;
         }
@@ -298,7 +298,9 @@ fn remove_head_seo_tags(head_html: &str) -> String {
                 if let Some(tag_end) = find_tag_end(bytes, after_name) {
                     if let Some(close_start) = find_bytes_ci(bytes, tag_end + 1, b"</title") {
                         if let Some(close_end) = find_tag_end(bytes, close_start + 2) {
+                            result.push_str(&head_html[copy_from..index]);
                             index = close_end + 1;
+                            copy_from = index;
                             continue;
                         }
                     }
@@ -309,15 +311,17 @@ fn remove_head_seo_tags(head_html: &str) -> String {
                     let tag_html = &head_html[index..=tag_end];
                     if is_meta_named(tag_html, "description") || is_meta_named(tag_html, "keywords")
                     {
+                        result.push_str(&head_html[copy_from..index]);
                         index = tag_end + 1;
+                        copy_from = index;
                         continue;
                     }
                 }
             }
         }
-        result.push(bytes[index] as char);
         index += 1;
     }
+    result.push_str(&head_html[copy_from..]);
     result
 }
 
@@ -487,7 +491,7 @@ fn format_unix_timestamp(timestamp: i64) -> String {
     let datetime = Utc
         .timestamp_opt(safe_ts, 0)
         .single()
-        .unwrap_or_else(|| Utc.timestamp(0, 0));
+        .unwrap_or_else(|| Utc.timestamp_opt(0, 0).single().expect("unix epoch"));
     datetime.to_rfc3339()
 }
 
@@ -496,6 +500,6 @@ fn format_display_timestamp(timestamp: i64) -> String {
     let datetime = Utc
         .timestamp_opt(safe_ts, 0)
         .single()
-        .unwrap_or_else(|| Utc.timestamp(0, 0));
+        .unwrap_or_else(|| Utc.timestamp_opt(0, 0).single().expect("unix epoch"));
     datetime.format("%Y-%m-%d %H:%M").to_string()
 }

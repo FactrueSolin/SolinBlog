@@ -302,7 +302,10 @@ impl BlogMcpServer {
             extra: Default::default(),
         };
 
-        match self.store.create_page_auto_uid(&meta, &html) {
+        match self
+            .store
+            .create_page_auto_uid_with_markdown(&meta, &html, Some(&req.markdown))
+        {
             Ok(saved_meta) => Ok(Json(PushPageResponse {
                 url: Some(build_page_full_url(
                     &resolve_site_url_from_env(),
@@ -592,6 +595,7 @@ impl BlogMcpServer {
         if let Some(keywords) = params.keywords {
             meta.seo.keywords = Some(keywords);
         }
+        let mut markdown_source: Option<String> = None;
         if let Some(markdown) = params.markdown {
             let rendered = match render_markdown_page(&markdown) {
                 Ok(rendered) => rendered,
@@ -613,9 +617,15 @@ impl BlogMcpServer {
                 }));
             }
             html = rendered;
+            markdown_source = Some(markdown);
         }
 
-        match self.store.update_page(&resolved_id, &meta, &html) {
+        match self.store.update_page_with_markdown(
+            &resolved_id,
+            &meta,
+            &html,
+            markdown_source.as_deref(),
+        ) {
             Ok(_) => {
                 let (saved_meta, _) = match self.store.load_page(&resolved_id) {
                     Ok(data) => data,
@@ -961,7 +971,10 @@ fn resolve_base_url(headers: &HeaderMap) -> String {
     let value = std::env::var("SITE_URL").unwrap_or_default();
     let trimmed = value.trim().trim_end_matches('/');
     if trimmed.is_empty() {
-        panic!("SITE_URL is required to resolve base url when request headers are missing");
+        eprintln!(
+            "[solin-blog] WARNING: SITE_URL is not set and request headers missing host, sitemap URLs will be relative"
+        );
+        return String::new();
     }
     trimmed.to_string()
 }
@@ -970,7 +983,10 @@ fn resolve_site_url_from_env() -> String {
     let value = std::env::var("SITE_URL").unwrap_or_default();
     let trimmed = value.trim().trim_end_matches('/');
     if trimmed.is_empty() {
-        panic!("SITE_URL is required for MCP URL generation");
+        eprintln!(
+            "[solin-blog] WARNING: SITE_URL is not set, MCP response URLs will be relative paths"
+        );
+        return String::new();
     }
     trimmed.to_string()
 }

@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use getrandom::getrandom;
 use pinyin::ToPinyin;
 use serde::{Deserialize, Serialize};
@@ -139,16 +139,13 @@ impl PageStore {
         if index.pages.contains_key(page_uid) {
             return Ok(Some(page_uid.to_string()));
         }
-        let matched = index
-            .pages
-            .iter()
-            .find_map(|(page_id, entry)| {
-                if entry.page_uid == page_uid {
-                    Some(page_id.clone())
-                } else {
-                    None
-                }
-            });
+        let matched = index.pages.iter().find_map(|(page_id, entry)| {
+            if entry.page_uid == page_uid {
+                Some(page_id.clone())
+            } else {
+                None
+            }
+        });
         Ok(matched)
     }
 
@@ -175,8 +172,7 @@ impl PageStore {
 
         let safe_id = sanitize_page_id(page_id);
         let page_dir = self.base_dir.join(&safe_id);
-        fs::create_dir_all(&page_dir)
-            .with_context(|| format!("create page dir {:?}", page_dir))?;
+        fs::create_dir_all(&page_dir).with_context(|| format!("create page dir {:?}", page_dir))?;
 
         let meta_path = page_dir.join("meta.json");
         let html_path = page_dir.join("index.html");
@@ -220,7 +216,9 @@ impl PageStore {
         } else {
             None
         };
-        let created_at = existing_created_at.or(fallback_created_at).unwrap_or(now_ts);
+        let created_at = existing_created_at
+            .or(fallback_created_at)
+            .unwrap_or(now_ts);
         let updated_at = now_ts;
         let mut meta_to_write = meta.clone();
         if meta_to_write.seo.title.is_empty() {
@@ -264,6 +262,16 @@ impl PageStore {
     }
 
     pub fn update_page(&self, page_id: &str, meta: &PageMeta, html: &str) -> Result<()> {
+        self.update_page_with_markdown(page_id, meta, html, None)
+    }
+
+    pub fn update_page_with_markdown(
+        &self,
+        page_id: &str,
+        meta: &PageMeta,
+        html: &str,
+        markdown: Option<&str>,
+    ) -> Result<()> {
         if !self.page_exists(page_id)? {
             bail!("page not found: {}", page_id);
         }
@@ -272,7 +280,7 @@ impl PageStore {
             meta_to_update.seo.title = meta_to_update.seo.seo_title.clone();
         }
         meta_to_update.seo.seo_title = to_url_slug(&meta_to_update.seo.seo_title);
-        self.save_page(page_id, &meta_to_update, html)
+        self.save_page_with_markdown(page_id, &meta_to_update, html, markdown)
     }
 
     pub fn load_page(&self, page_id: &str) -> Result<(PageMeta, String)> {
@@ -358,7 +366,9 @@ impl PageStore {
         } else {
             None
         };
-        let created_at = existing_created_at.or(fallback_created_at).unwrap_or(now_ts);
+        let created_at = existing_created_at
+            .or(fallback_created_at)
+            .unwrap_or(now_ts);
         let updated_at = now_ts;
         let mut meta_to_write = meta.clone();
         if meta_to_write.seo.title.is_empty() {
@@ -539,8 +549,7 @@ impl PageStore {
         }
 
         let page_dir = self.base_dir.join(&safe_id);
-        fs::remove_dir_all(&page_dir)
-            .with_context(|| format!("remove page dir {:?}", page_dir))?;
+        fs::remove_dir_all(&page_dir).with_context(|| format!("remove page dir {:?}", page_dir))?;
 
         let mut index = self.load_index()?;
         index.pages.remove(&safe_id);
@@ -704,7 +713,8 @@ pub fn validate_html(html: &str) -> Result<()> {
             }
             stack.push((name.clone(), index));
             let closing = format!("</{}>", name);
-            if let Some(close_start) = find_bytes_case_insensitive(bytes, end + 1, closing.as_bytes())
+            if let Some(close_start) =
+                find_bytes_case_insensitive(bytes, end + 1, closing.as_bytes())
             {
                 let close_end = close_start + closing.len();
                 let _ = stack.pop();
@@ -746,7 +756,8 @@ pub fn sanitize_page_id(page_id: &str) -> String {
 }
 
 const PAGE_UID_LEN: usize = 16;
-const PAGE_UID_ALPHABET: &[u8; 62] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+const PAGE_UID_ALPHABET: &[u8; 62] =
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 fn generate_page_uid() -> Result<String> {
     let mut bytes = [0u8; PAGE_UID_LEN];
@@ -778,14 +789,10 @@ fn now_unix_seconds() -> Result<i64> {
 
 fn atomic_write(path: &Path, data: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("create parent dir {:?}", parent))?;
+        fs::create_dir_all(parent).with_context(|| format!("create parent dir {:?}", parent))?;
     }
     let tmp_path = path.with_extension("tmp");
     fs::write(&tmp_path, data).with_context(|| format!("write temp file {:?}", tmp_path))?;
-    if path.exists() {
-        let _ = fs::remove_file(path);
-    }
     fs::rename(&tmp_path, path)
         .with_context(|| format!("rename temp file {:?} -> {:?}", tmp_path, path))?;
     Ok(())
@@ -890,7 +897,10 @@ fn find_bytes_case_insensitive(haystack: &[u8], start: usize, needle: &[u8]) -> 
     if start >= haystack.len() || needle.len() > haystack.len() {
         return None;
     }
-    let needle_lower: Vec<u8> = needle.iter().map(|byte| byte.to_ascii_lowercase()).collect();
+    let needle_lower: Vec<u8> = needle
+        .iter()
+        .map(|byte| byte.to_ascii_lowercase())
+        .collect();
     let end = haystack.len().saturating_sub(needle_lower.len());
     for index in start..=end {
         let mut matched = true;
