@@ -11,7 +11,7 @@ use getrandom::getrandom;
 use mime_guess::MimeGuess;
 use rmcp::{
     ErrorData as McpError, ServerHandler,
-    handler::server::{router::tool::ToolRouter, tool::Parameters, wrapper::Json},
+    handler::server::{router::tool::ToolRouter, wrapper::Json, wrapper::Parameters},
     model::{
         CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
     },

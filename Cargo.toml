@@ -23,7 +23,7 @@ chrono = { version = "0.4", default-features = false, features = [
     "clock",
     "std",
 ] }
-rmcp = { version = "0.3", features = [
+rmcp = { version = "0.14.0", features = [
     "server",
     "macros",
     "transport-streamable-http-server",
