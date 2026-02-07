@@ -98,6 +98,12 @@ struct GetAllPageResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+struct GetAllPageRequest {
+    /// 预留参数，保持 schema 的 properties 非空
+    reserved: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PageWithMeta {
     page_id: String,
     url: String,
@@ -328,7 +334,10 @@ impl BlogMcpServer {
     }
 
     #[tool(description = "List all blog page metadata")]
-    async fn get_all_page(&self) -> Result<Json<GetAllPageResponse>, String> {
+    async fn get_all_page(
+        &self,
+        Parameters(_params): Parameters<GetAllPageRequest>,
+    ) -> Result<Json<GetAllPageResponse>, String> {
         let entries = match self.store.list_page_entries() {
             Ok(entries) => entries,
             Err(err) => {
