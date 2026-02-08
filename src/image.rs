@@ -1,7 +1,13 @@
 
+use anyhow::{Context, Result, anyhow};
+use regex::{Captures, Regex};
 use reqwest::Client;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::path::Path;
+use tokio::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ImageSearchItem {
@@ -203,4 +209,153 @@ fn resolve_searxng_url() -> Result<String, String> {
         return Err("SEARXNG_URL is required".to_string());
     }
     Ok(trimmed.to_string())
+}
+
+/// 从 Markdown 中提取所有图片 URL
+pub fn extract_markdown_image_urls(markdown: &str) -> Vec<String> {
+    let regex = Regex::new(r#"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)"#)
+        .expect("markdown image regex should be valid");
+    regex
+        .captures_iter(markdown)
+        .filter_map(|caps| caps.get(2).map(|m| m.as_str().trim_matches(['<', '>']).to_string()))
+        .collect()
+}
+
+/// 下载单个图片到 public/images/ 目录，返回本地文件名
+pub async fn download_image_to_public(url: &str) -> Result<String> {
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return Err(anyhow!("unsupported image url scheme: {url}"));
+    }
+
+    fs::create_dir_all("public/images")
+        .await
+        .context("create public/images failed")?;
+
+    let client = Client::new();
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .with_context(|| format!("request image failed: {url}"))?;
+
+    if !response.status().is_success() {
+        return Err(anyhow!(
+            "download image failed with status {}: {}",
+            response.status(),
+            url
+        ));
+    }
+
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(|value| value.to_string());
+
+    let bytes = response
+        .bytes()
+        .await
+        .with_context(|| format!("read image bytes failed: {url}"))?;
+
+    let extension = infer_extension(url, content_type.as_deref()).unwrap_or_else(|| "img".to_string());
+    let mut hasher = Sha256::new();
+    hasher.update(url.as_bytes());
+    let hash = format!("{:x}", hasher.finalize());
+    let filename = format!("{hash}.{extension}");
+    let output_path = format!("public/images/{filename}");
+
+    if fs::metadata(&output_path).await.is_err() {
+        fs::write(&output_path, &bytes)
+            .await
+            .with_context(|| format!("write image file failed: {output_path}"))?;
+    }
+
+    Ok(filename)
+}
+
+/// 处理 Markdown 中的所有图片：下载并替换 URL
+/// 返回处理后的 Markdown 文本
+pub async fn process_markdown_images(markdown: &str) -> Result<String> {
+    let urls = extract_markdown_image_urls(markdown);
+    if urls.is_empty() {
+        return Ok(markdown.to_string());
+    }
+
+    let mut replacements: HashMap<String, String> = HashMap::new();
+    for url in urls {
+        if replacements.contains_key(&url) {
+            continue;
+        }
+
+        match download_image_to_public(&url).await {
+            Ok(filename) => {
+                replacements.insert(url, format!("/public/images/{filename}"));
+            }
+            Err(err) => {
+                eprintln!("[solin-blog] download markdown image failed: {err}");
+            }
+        }
+    }
+
+    if replacements.is_empty() {
+        return Ok(markdown.to_string());
+    }
+
+    Ok(replace_markdown_image_urls(markdown, &replacements))
+}
+
+fn replace_markdown_image_urls(markdown: &str, replacements: &HashMap<String, String>) -> String {
+    let regex = Regex::new(r#"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"([^\"]*)\")?\)"#)
+        .expect("markdown image regex should be valid");
+
+    regex
+        .replace_all(markdown, |caps: &Captures| {
+            let original = caps.get(0).map(|m| m.as_str()).unwrap_or_default();
+            let alt = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
+            let raw_url = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
+            let normalized_url = raw_url.trim_matches(['<', '>']);
+
+            let Some(local_url) = replacements.get(normalized_url) else {
+                return original.to_string();
+            };
+
+            if let Some(title) = caps.get(3).map(|m| m.as_str()) {
+                format!(r#"![{alt}]({local_url} "{title}")"#)
+            } else {
+                format!("![{alt}]({local_url})")
+            }
+        })
+        .into_owned()
+}
+
+fn infer_extension(url: &str, content_type: Option<&str>) -> Option<String> {
+    infer_extension_from_url(url).or_else(|| infer_extension_from_content_type(content_type))
+}
+
+fn infer_extension_from_url(url: &str) -> Option<String> {
+    let parsed = reqwest::Url::parse(url).ok()?;
+    let ext = Path::new(parsed.path())
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.trim().to_ascii_lowercase())?;
+    if ext.is_empty() {
+        None
+    } else {
+        Some(ext)
+    }
+}
+
+fn infer_extension_from_content_type(content_type: Option<&str>) -> Option<String> {
+    let mime = content_type?.split(';').next()?.trim();
+    match mime {
+        "image/jpeg" => Some("jpg".to_string()),
+        "image/png" => Some("png".to_string()),
+        "image/gif" => Some("gif".to_string()),
+        "image/webp" => Some("webp".to_string()),
+        "image/svg+xml" => Some("svg".to_string()),
+        "image/bmp" => Some("bmp".to_string()),
+        "image/tiff" => Some("tiff".to_string()),
+        "image/x-icon" | "image/vnd.microsoft.icon" => Some("ico".to_string()),
+        _ => None,
+    }
 }
