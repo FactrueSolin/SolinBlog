@@ -33,31 +33,31 @@ docker compose logs -f solinblog
 5) 访问服务：
 
 - 本机访问：`http://localhost:3002`
-- MCP 入口：启动日志会输出 `MCP endpoint: http://{addr}/{token}/mcp`（由 [`main()`](src/main.rs:422) 打印）。
+- MCP 入口：`http://localhost:3002/mcp`（启动日志会输出 MCP 地址和 Token）
 
 ### 基本配置说明
 
 默认编排见 [`docker-compose.yml`](docker-compose.yml:1)：
 
 - 端口映射：`3002:3002`（可将左侧宿主机端口改为其他值，例如 `8080:3002`）。
-- 监听地址：容器内通过 [`WEB_HOST`](docker-compose.yml:13) 设置为 `0.0.0.0`，确保能被容器外访问（对应 [`WEB_HOST`](src/main.rs:450)）。
+- 监听地址：容器内通过 [`WEB_HOST`](docker-compose.yml:13) 设置为 `0.0.0.0`，确保能被容器外访问（对应 [`src/bin/server.rs`](src/bin/server.rs:1)）。
 - 数据与模板挂载：见「数据持久化」与「自定义模板」。
 
 ---
 
 ## 2. 环境变量配置
 
-项目在启动时会读取环境变量（见 [`main()`](src/main.rs:422) 与 [`render_index_html()`](src/web.rs:35)）。建议通过 Compose 的 `env_file` 或 `docker run --env-file` 统一管理。
+项目在启动时会读取环境变量（见 [`server.rs`](src/bin/server.rs:1) 与 [`render_index_html()`](src/web_core.rs:1)）。建议通过 Compose 的 `env_file` 或 `docker run --env-file` 统一管理。
 
 ### 2.1 全部支持的环境变量
 
 | 变量名 | 是否必需 | 作用 | 默认行为/建议 |
 |---|---:|---|---|
-| `WEB_HOST` | 否 | Web 服务监听地址 | 若未设置，代码默认回退到 `127.0.0.1`（见 [`WEB_HOST`](src/main.rs:450)）；容器部署务必设为 `0.0.0.0`（Compose 已设置，见 [`WEB_HOST`](docker-compose.yml:13)；镜像也在 [`Dockerfile`](Dockerfile:15) 里设置了默认值）。 |
-| `WEB_PORT` | 否 | Web 服务监听端口 | 代码默认 `3000`（见 [`WEB_PORT`](src/main.rs:451)）；Docker 镜像默认 `3002`（见 [`Dockerfile`](Dockerfile:16)）；Compose 映射为 `3002:3002`（见 [`ports`](docker-compose.yml:14)）。 |
-| `SITE_URL` | **建议必填** | 站点对外访问的基础 URL（用于生成完整 URL） | 用于在缺少请求头时解析 base url（见 [`resolve_base_url()`](src/main.rs:561)），以及 MCP URL 生成（见 [`resolve_site_url_from_env()`](src/main.rs:587)）。生产环境强烈建议填写，例如 `https://blog.example.com`（不要以 `/` 结尾）。 |
-| `MCP_TOKEN` | **建议必填** | MCP 接口路径中的 token（同时起到“路径级鉴权”作用） | 若为空，服务会自动生成并在启动日志打印（见 [`MCP_TOKEN`](src/main.rs:426) 与 `MCP token generated` 输出）。建议显式配置，避免每次重启 token 变化。 |
-| `BEIAN_NUMBER` | 否 | 首页底部备案号展示 | 为空则不显示；非空则渲染到首页 footer（见 [`BEIAN_NUMBER`](src/web.rs:65)）。 |
+| `WEB_HOST` | 否 | Web 服务监听地址 | 若未设置，代码默认回退到 `127.0.0.1`；容器部署务必设为 `0.0.0.0`（Compose 已设置，见 [`WEB_HOST`](docker-compose.yml:13)；镜像也在 [`Dockerfile`](Dockerfile:15) 里设置了默认值）。 |
+| `WEB_PORT` | 否 | Web 服务监听端口 | 代码默认 `3000`；Docker 镜像默认 `3002`（见 [`Dockerfile`](Dockerfile:16)）；Compose 映射为 `3002:3002`（见 [`ports`](docker-compose.yml:14)）。 |
+| `SITE_URL` | **建议必填** | 站点对外访问的基础 URL（用于生成完整 URL） | 用于在缺少请求头时解析 base url（见 [`resolve_base_url()`](src/web/config.rs:1)），以及 MCP URL 生成（见 [`resolve_site_url_from_env()`](src/mcp/utils.rs:1)）。生产环境强烈建议填写，例如 `https://blog.example.com`（不要以 `/` 结尾）。 |
+| `MCP_TOKEN` | **建议必填** | MCP 接口认证 Token（通过 `Authorization: Bearer {token}` 头认证） | 若为空，服务会自动生成并在启动日志打印。建议显式配置，避免每次重启 token 变化。 |
+| `BEIAN_NUMBER` | 否 | 首页底部备案号展示 | 为空则不显示；非空则渲染到首页 footer（见 [`render_index_html()`](src/web_core.rs:1)）。 |
 
 ### 2.2 配置示例
 
@@ -73,11 +73,39 @@ BEIAN_NUMBER=浙ICP备2024056246号
 
 > 提示：如果你让系统自动生成 `MCP_TOKEN`，可通过 `docker compose logs -f solinblog` 查看启动时打印的 token。
 
+### 2.3 MCP 连接方式
+
+MCP 端点固定为 `/mcp`，认证通过 HTTP 头 `Authorization: Bearer {token}` 实现：
+
+```bash
+# 使用 curl 测试连接
+curl -X POST \
+  -H "Authorization: Bearer ${MCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' \
+  http://localhost:3002/mcp
+```
+
+AI 客户端（如 Roo/Cline）配置示例：
+```json
+{
+  "mcpServers": {
+    "solinblog": {
+      "url": "http://localhost:3002/mcp",
+      "transport": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer ${MCP_TOKEN}"
+      }
+    }
+  }
+}
+```
+
 ---
 
 ## 3. 数据持久化
 
-SolinBlog 的页面数据默认存储在容器内的 `/app/data` 目录（服务端创建 store：[`PageStore::new("data")`](src/main.rs:425)）。
+SolinBlog 的页面数据默认存储在容器内的 `/app/data` 目录（服务端创建 store：[`PageStore::new("data")`](src/store.rs:1)）。
 
 ### 3.1 Compose 挂载方式
 
@@ -120,8 +148,8 @@ docker compose start solinblog
 
 SolinBlog 运行时会读取 `front/` 下的静态模板文件：
 
-- 首页模板：[`front/index.html`](front/index.html:1)（见 [`render_index_html()`](src/web.rs:35)）
-- Token 生成页：[`front/token-generator.html`](front/token-generator.html:1)（见 [`token_generator_handler()`](src/main.rs:550)）
+- 首页模板：[`front/index.html`](front/index.html:1)（见 [`render_index_html()`](src/web_core.rs:1)）
+- Token 生成页：[`front/token-generator.html`](front/token-generator.html:1)（见 [`token_generator_handler()`](src/web/handlers.rs:1)）
 
 ### 4.1 Compose 挂载方式
 
@@ -197,7 +225,7 @@ docker compose ps
 
 当你使用 Nginx/Caddy/Traefik 等反向代理提供 HTTPS 时，务必正确传递 `Host` 与 `x-forwarded-proto`：
 
-- SolinBlog 在渲染 `sitemap.xml` / 生成完整 URL 时，会优先使用请求头 `host` 和 `x-forwarded-proto`（见 [`resolve_base_url()`](src/main.rs:561)）。
+- SolinBlog 在渲染 `sitemap.xml` / 生成完整 URL 时，会优先使用请求头 `host` 和 `x-forwarded-proto`（见 [`resolve_base_url()`](src/web/config.rs:1)）。
 - 如果缺少 `x-forwarded-proto`，服务会默认当作 `http`，从而导致 sitemap 或页面 URL 使用错误协议（HTTPS 站点被生成成 HTTP）。
 
 ### 6.1 Nginx 配置示例

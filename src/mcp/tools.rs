@@ -1,208 +1,35 @@
-use axum::{
-    Router,
-    body::Body,
-    extract::{Path, State},
-    http::{HeaderMap, Request, StatusCode, header::CONTENT_TYPE},
-    middleware::{self, Next},
-    response::{Html, IntoResponse, Response},
-    routing::get,
-};
-use getrandom::getrandom;
-use mime_guess::MimeGuess;
+//! MCP 工具实现
+
 use rmcp::{
-    ErrorData as McpError, ServerHandler,
+    ErrorData as McpError,
+    ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters, wrapper::Json},
-    model::{
-        CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
-    },
-    tool, tool_handler, tool_router,
-    transport::streamable_http_server::{
-        StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
-    },
+    model::{CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, SocketAddr};
-use std::path::{Component, Path as FsPath, PathBuf};
-use std::sync::Arc;
+use rmcp::{tool, tool_router, tool_handler};
 
-use solin_blog::image::{ImageSearchResponse, search_images};
-use solin_blog::store::{PageMeta, PageStore, validate_html};
-use solin_blog::web::{
-    parse_page_id_from_slug, render_404_html, render_index_html, render_markdown_page,
-    render_page_html, render_sitemap_xml,
-};
+use crate::image::search_images;
+use crate::store::{PageMeta, PageStore};
+use crate::web::{render_markdown_page, validate_html};
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct PushPageRequest {
-    seo_title: String,
-    description: String,
-    keywords: Option<Vec<String>>,
-    html: String,
-}
+use super::auth::TokenStore;
+use super::dto::*;
+use super::utils::{build_page_full_url, resolve_site_url_from_env};
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct PushMarkdownRequest {
-    seo_title: String,
-    description: String,
-    keywords: Option<Vec<String>>,
-    markdown: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct SeoMetaResponse {
-    seo_title: String,
-    description: String,
-    keywords: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct PageMetaResponse {
-    seo: SeoMetaResponse,
-    page_uid: String,
-    created_at: i64,
-    updated_at: i64,
-    view_count: u64,
-}
-
-impl From<PageMeta> for PageMetaResponse {
-    fn from(meta: PageMeta) -> Self {
-        Self {
-            seo: SeoMetaResponse {
-                seo_title: meta.seo.seo_title,
-                description: meta.seo.description,
-                keywords: meta.seo.keywords,
-            },
-            page_uid: meta.page_uid,
-            created_at: meta.created_at,
-            updated_at: meta.updated_at,
-            view_count: meta.view_count,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct PushPageResponse {
-    success: bool,
-    page_id: Option<String>,
-    url: Option<String>,
-    meta: Option<PageMetaResponse>,
-    error: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct GetAllPageResponse {
-    success: bool,
-    pages: Vec<PageWithMeta>,
-    error: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct PageWithMeta {
-    page_id: String,
-    url: String,
-    meta: PageMetaResponse,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct PageIdRequest {
-    page_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct GetPageByIdRequest {
-    page_id: Option<String>,
-    ids: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct GetPageByIdResponse {
-    success: bool,
-    pages: Vec<PageWithHtml>,
-    error: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct PageWithHtml {
-    page_id: String,
-    url: String,
-    meta: PageMetaResponse,
-    html: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct DeletePageResponse {
-    success: bool,
-    error: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct UpdatePageRequest {
-    page_id: String,
-    seo_title: Option<String>,
-    description: Option<String>,
-    keywords: Option<Vec<String>>,
-    html: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct UpdateMarkdownPageRequest {
-    page_id: String,
-    seo_title: Option<String>,
-    description: Option<String>,
-    keywords: Option<Vec<String>>,
-    markdown: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct UpdatePageResponse {
-    success: bool,
-    url: Option<String>,
-    meta: Option<PageMetaResponse>,
-    error: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-struct ImageSearchRequest {
-    keywords: Vec<String>,
-    limit: Option<usize>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum BlogStyle {
-    PplxStyle,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum HtmlStyleType {
-    Default,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-struct GetBlogStyleRequest {
-    /// 博文风格类型
-    style: BlogStyle,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-struct GetHtmlStyleRequest {
-    /// HTML 风格类型
-    style: HtmlStyleType,
-}
-
+/// MCP 服务器结构
 #[derive(Clone)]
-struct BlogMcpServer {
-    store: Arc<PageStore>,
-    tool_router: ToolRouter<BlogMcpServer>,
+pub struct BlogMcpServer {
+    pub store: std::sync::Arc<PageStore>,
+    pub token_store: std::sync::Arc<TokenStore>,
+    pub tool_router: ToolRouter<BlogMcpServer>,
 }
 
 #[tool_router(router = tool_router)]
 impl BlogMcpServer {
-    fn new(store: Arc<PageStore>) -> Self {
+    pub fn new(store: std::sync::Arc<PageStore>, token_store: std::sync::Arc<TokenStore>) -> Self {
         Self {
             store,
+            token_store,
             tool_router: Self::tool_router(),
         }
     }
@@ -213,7 +40,7 @@ impl BlogMcpServer {
         Parameters(params): Parameters<PushPageRequest>,
     ) -> Result<Json<PushPageResponse>, String> {
         let meta = PageMeta {
-            seo: solin_blog::store::SeoMeta {
+            seo: crate::store::SeoMeta {
                 title: params.seo_title.clone(),
                 seo_title: params.seo_title,
                 description: params.description,
@@ -288,7 +115,7 @@ impl BlogMcpServer {
         }
 
         let meta = PageMeta {
-            seo: solin_blog::store::SeoMeta {
+            seo: crate::store::SeoMeta {
                 title: req.seo_title.clone(),
                 seo_title: req.seo_title,
                 description: req.description,
@@ -361,9 +188,7 @@ impl BlogMcpServer {
         }))
     }
 
-    #[tool(
-        description = "Get blog pages by page_id list (page_uid). Supports single page_id for backward compatibility"
-    )]
+    #[tool(description = "Get blog pages by page_id list (page_uid). Supports single page_id for backward compatibility")]
     async fn get_page_by_id(
         &self,
         Parameters(params): Parameters<GetPageByIdRequest>,
@@ -658,45 +483,36 @@ impl BlogMcpServer {
         }
     }
 
-    #[tool(description = "Search images via SearXNG")]
-    async fn search_images(
+    /// 搜索图片
+    pub async fn search_images(
         &self,
-        Parameters(params): Parameters<ImageSearchRequest>,
-    ) -> Result<Json<ImageSearchResponse>, String> {
+        params: ImageSearchRequest,
+    ) -> Result<crate::image::ImageSearchResponse, String> {
         let limit = params.limit.unwrap_or(50);
-        Ok(Json(search_images(&params.keywords, limit).await))
+        Ok(search_images(&params.keywords, limit).await)
     }
 
-    #[tool(name = "get_blog_style", description = "获取指定的博文写作风格指南")]
-    async fn get_blog_style(
-        &self,
-        Parameters(params): Parameters<GetBlogStyleRequest>,
-    ) -> Result<CallToolResult, McpError> {
+    /// 获取博客风格
+    pub async fn get_blog_style(&self, params: GetBlogStyleRequest) -> Result<CallToolResult, McpError> {
         let style = &params.style;
         let content = match style {
             BlogStyle::PplxStyle => std::fs::read_to_string("public/prompt/PPLX.xml")
-                .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?,
+                .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?,
         };
         Ok(CallToolResult::success(vec![Content::text(content)]))
     }
 
-    #[tool(
-        name = "get_html_style",
-        description = "获取 HTML 风格参考，1. 用户未指定样式，则默认为default。2. 在制作HTML博文时需先获得参考样式"
-    )]
-    async fn get_html_style(
-        &self,
-        Parameters(params): Parameters<GetHtmlStyleRequest>,
-    ) -> Result<CallToolResult, McpError> {
+    /// 获取 HTML 风格
+    pub async fn get_html_style(&self, params: GetHtmlStyleRequest) -> Result<CallToolResult, McpError> {
         let style = &params.style;
         let template = match style {
             HtmlStyleType::Default => std::fs::read_to_string("public/prompt/HTML.xml")
-                .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?,
+                .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?,
         };
         let example_css = std::fs::read_to_string("front/example.css")
-            .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?;
+            .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?;
         let example_html = std::fs::read_to_string("front/index.html")
-            .map_err(|err| McpError::internal_error(format!("读取文件失败: {err}"), None))?;
+            .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?;
         let content = template
             .replace("{{EXAMPLE_CSS}}", &example_css)
             .replace("{{EXAMPLE_HTML}}", &example_html);
@@ -719,279 +535,4 @@ impl ServerHandler for BlogMcpServer {
             ),
         }
     }
-}
-
-#[tokio::main]
-async fn main() {
-    dotenvy::dotenv().ok();
-
-    let store = Arc::new(PageStore::new("data"));
-    let mut mcp_token = std::env::var("MCP_TOKEN")
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-    if mcp_token.is_empty() {
-        mcp_token = generate_mcp_token();
-        println!("[solin-blog] MCP token generated: {mcp_token}");
-    }
-    let mcp_path = format!("/{}/mcp", mcp_token);
-    let mcp_server = BlogMcpServer::new(Arc::clone(&store));
-    let mcp_service = StreamableHttpService::new(
-        move || Ok(mcp_server.clone()),
-        LocalSessionManager::default().into(),
-        StreamableHttpServerConfig::default(),
-    );
-    let app = Router::new()
-        .route("/", get(index_handler))
-        .route("/tools/token-generator", get(token_generator_handler))
-        .route("/pages/{slug}", get(page_handler))
-        .route("/sitemap.xml", get(sitemap_handler))
-        .route("/public/{*path}", get(public_asset_handler))
-        .nest_service(mcp_path.as_str(), mcp_service)
-        .with_state(store)
-        .layer(middleware::from_fn(log_request));
-
-    let host = std::env::var("WEB_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = std::env::var("WEB_PORT")
-        .ok()
-        .and_then(|value| value.parse::<u16>().ok())
-        .unwrap_or(3000);
-    let addr = match host.parse::<IpAddr>() {
-        Ok(ip) => SocketAddr::from((ip, port)),
-        Err(_) => SocketAddr::from(([127, 0, 0, 1], port)),
-    };
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("bind http listener");
-    println!("[solin-blog] http server listening on http://{addr}");
-    println!("[solin-blog] MCP endpoint: http://{addr}{mcp_path}");
-    axum::serve(listener, app).await.expect("serve http");
-}
-
-fn generate_mcp_token() -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let mut bytes = [0u8; 16];
-    getrandom(&mut bytes).expect("generate mcp token");
-    bytes
-        .iter()
-        .map(|value| {
-            let index = (*value as usize) % CHARSET.len();
-            CHARSET[index] as char
-        })
-        .collect()
-}
-
-async fn log_request(req: Request<Body>, next: Next) -> Response {
-    let upgrade = req
-        .headers()
-        .get("upgrade")
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("-");
-    let connection = req
-        .headers()
-        .get("connection")
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("-");
-    println!(
-        "[solin-blog] {} {} upgrade={} connection={}",
-        req.method(),
-        req.uri(),
-        upgrade,
-        connection
-    );
-    let response = next.run(req).await;
-    println!("[solin-blog] -> {}", response.status());
-    response
-}
-
-async fn index_handler(
-    State(store): State<Arc<PageStore>>,
-    _headers: HeaderMap,
-) -> impl IntoResponse {
-    match render_index_html(&store) {
-        Ok(html) => Html(html).into_response(),
-        Err(err) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("render index failed: {err}"),
-        )
-            .into_response(),
-    }
-}
-
-async fn sitemap_handler(
-    State(store): State<Arc<PageStore>>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
-    let base_url = resolve_base_url(&headers);
-    match render_sitemap_xml(&store, &base_url) {
-        Ok(xml) => ([(CONTENT_TYPE, "application/xml")], xml).into_response(),
-        Err(err) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("render sitemap failed: {err}"),
-        )
-            .into_response(),
-    }
-}
-
-async fn page_handler(
-    State(store): State<Arc<PageStore>>,
-    Path(slug): Path<String>,
-) -> impl IntoResponse {
-    let Some(page_id) = parse_page_id_from_slug(&slug) else {
-        return match render_404_html() {
-            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("render 404 failed: {err}"),
-            )
-                .into_response(),
-        };
-    };
-    match store.load_page(&page_id) {
-        Ok((meta, html)) => {
-            let rendered = render_page_html(&meta, &html);
-            if let Err(err) = store.increment_view_count(&page_id) {
-                eprintln!("[solin-blog] increment view count failed: {err}");
-            }
-            Html(rendered).into_response()
-        }
-        Err(_err) => match render_404_html() {
-            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("render 404 failed: {err}"),
-            )
-                .into_response(),
-        },
-    }
-}
-
-async fn token_generator_handler() -> impl IntoResponse {
-    match std::fs::read_to_string("front/token-generator.html") {
-        Ok(html) => Html(html).into_response(),
-        Err(err) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("read token generator html failed: {err}"),
-        )
-            .into_response(),
-    }
-}
-
-async fn public_asset_handler(Path(path): Path<String>) -> impl IntoResponse {
-    if path.is_empty() {
-        return match render_404_html() {
-            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("render 404 failed: {err}"),
-            )
-                .into_response(),
-        };
-    }
-    let Ok(safe_path) = sanitize_public_path(&path) else {
-        return match render_404_html() {
-            Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("render 404 failed: {err}"),
-            )
-                .into_response(),
-        };
-    };
-    let full_path = PathBuf::from("public").join(&safe_path);
-    let data = match std::fs::read(&full_path) {
-        Ok(data) => data,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return match render_404_html() {
-                Ok(html) => (StatusCode::NOT_FOUND, Html(html)).into_response(),
-                Err(err) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("render 404 failed: {err}"),
-                )
-                    .into_response(),
-            };
-        }
-        Err(err) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("read public asset failed: {err}"),
-            )
-                .into_response();
-        }
-    };
-    let mime = guess_mime_type(&full_path);
-    ([(CONTENT_TYPE, mime.as_ref())], data).into_response()
-}
-
-fn sanitize_public_path(raw: &str) -> Result<PathBuf, ()> {
-    let mut cleaned = PathBuf::new();
-    for segment in raw.split('/') {
-        if segment.is_empty() || segment == "." {
-            continue;
-        }
-        if segment == ".." {
-            return Err(());
-        }
-        let segment_path = FsPath::new(segment);
-        let mut segment_components = segment_path.components();
-        match segment_components.next() {
-            Some(Component::Normal(_)) if segment_components.next().is_none() => {}
-            _ => return Err(()),
-        }
-        cleaned.push(segment);
-    }
-    if cleaned.as_os_str().is_empty() {
-        return Err(());
-    }
-    Ok(cleaned)
-}
-
-fn guess_mime_type(path: &FsPath) -> mime_guess::Mime {
-    MimeGuess::from_path(path).first_or_octet_stream()
-}
-
-fn resolve_base_url(headers: &HeaderMap) -> String {
-    if let Some(host) = headers
-        .get("host")
-        .and_then(|value| value.to_str().ok())
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-    {
-        let scheme = headers
-            .get("x-forwarded-proto")
-            .and_then(|value| value.to_str().ok())
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .unwrap_or("http");
-        return format!("{}://{}", scheme, host)
-            .trim_end_matches('/')
-            .to_string();
-    }
-
-    let value = std::env::var("SITE_URL").unwrap_or_default();
-    let trimmed = value.trim().trim_end_matches('/');
-    if trimmed.is_empty() {
-        eprintln!(
-            "[solin-blog] WARNING: SITE_URL is not set and request headers missing host, sitemap URLs will be relative"
-        );
-        return String::new();
-    }
-    trimmed.to_string()
-}
-
-fn resolve_site_url_from_env() -> String {
-    let value = std::env::var("SITE_URL").unwrap_or_default();
-    let trimmed = value.trim().trim_end_matches('/');
-    if trimmed.is_empty() {
-        eprintln!(
-            "[solin-blog] WARNING: SITE_URL is not set, MCP response URLs will be relative paths"
-        );
-        return String::new();
-    }
-    trimmed.to_string()
-}
-
-fn build_page_full_url(base_url: &str, page_id: &str, seo_title: &str) -> String {
-    let path = solin_blog::web::build_page_url(page_id, seo_title);
-    format!("{}{}", base_url.trim_end_matches('/'), path)
 }
