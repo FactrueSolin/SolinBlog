@@ -1,14 +1,13 @@
 //! MCP 工具实现
 
 use rmcp::{
-    ErrorData as McpError,
     ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::Parameters, wrapper::Json},
-    model::{CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
+    model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
 };
 use rmcp::{tool, tool_router, tool_handler};
 
-use crate::image::search_images;
+// use crate::image::search_images;
 use crate::store::{PageMeta, PageStore};
 use crate::web::{render_markdown_page, validate_html};
 
@@ -483,40 +482,56 @@ impl BlogMcpServer {
         }
     }
 
-    /// 搜索图片
-    pub async fn search_images(
-        &self,
-        params: ImageSearchRequest,
-    ) -> Result<crate::image::ImageSearchResponse, String> {
-        let limit = params.limit.unwrap_or(50);
-        Ok(search_images(&params.keywords, limit).await)
-    }
+    // /// 搜索图片
+    // pub async fn search_images(
+    //     &self,
+    //     params: ImageSearchRequest,
+    // ) -> Result<crate::image::ImageSearchResponse, String> {
+    //     let limit = params.limit.unwrap_or(50);
+    //     Ok(search_images(&params.keywords, limit).await)
+    // }
 
+    #[tool(description = "Get blog style template")]
     /// 获取博客风格
-    pub async fn get_blog_style(&self, params: GetBlogStyleRequest) -> Result<CallToolResult, McpError> {
+    async fn get_blog_style(
+        &self,
+        Parameters(params): Parameters<GetBlogStyleRequest>,
+    ) -> Result<Json<GetBlogStyleResponse>, String> {
         let style = &params.style;
         let content = match style {
             BlogStyle::PplxStyle => std::fs::read_to_string("public/prompt/PPLX.xml")
-                .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?,
+                .map_err(|err| err.to_string())?,
         };
-        Ok(CallToolResult::success(vec![Content::text(content)]))
+        Ok(Json(GetBlogStyleResponse {
+            success: true,
+            content,
+            error: None,
+        }))
     }
 
+    #[tool(description = "Get HTML style template with example CSS and HTML")]
     /// 获取 HTML 风格
-    pub async fn get_html_style(&self, params: GetHtmlStyleRequest) -> Result<CallToolResult, McpError> {
+    async fn get_html_style(
+        &self,
+        Parameters(params): Parameters<GetHtmlStyleRequest>,
+    ) -> Result<Json<GetHtmlStyleResponse>, String> {
         let style = &params.style;
         let template = match style {
             HtmlStyleType::Default => std::fs::read_to_string("public/prompt/HTML.xml")
-                .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?,
+                .map_err(|err| err.to_string())?,
         };
         let example_css = std::fs::read_to_string("front/example.css")
-            .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?;
+            .map_err(|err| err.to_string())?;
         let example_html = std::fs::read_to_string("front/index.html")
-            .map_err(|err| McpError::internal_error(format!("读取文件失败：{err}"), None))?;
+            .map_err(|err| err.to_string())?;
         let content = template
             .replace("{{EXAMPLE_CSS}}", &example_css)
             .replace("{{EXAMPLE_HTML}}", &example_html);
-        Ok(CallToolResult::success(vec![Content::text(content)]))
+        Ok(Json(GetHtmlStyleResponse {
+            success: true,
+            content,
+            error: None,
+        }))
     }
 }
 
@@ -530,7 +545,7 @@ impl ServerHandler for BlogMcpServer {
                 .build(),
             server_info: Implementation::from_build_env(),
             instructions: Some(
-                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page, update_markdown_page, search_images, get_blog_style, get_html_style."
+                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page, update_markdown_page, get_blog_style, get_html_style."
                     .to_string(),
             ),
         }

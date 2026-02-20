@@ -169,3 +169,17 @@ pub struct GetHtmlStyleRequest {
     /// HTML 风格类型
     pub style: HtmlStyleType,
 }
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetBlogStyleResponse {
+    pub success: bool,
+    pub content: String,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetHtmlStyleResponse {
+    pub success: bool,
+    pub content: String,
+    pub error: Option<String>,
+}
