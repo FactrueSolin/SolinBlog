@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 use crate::store::PageStore;
 use crate::web::{
-    parse_page_id_from_slug, render_404_html, render_index_html, render_page_html,
-    render_sitemap_xml,
+    inject_umami_script, parse_page_id_from_slug, render_404_html, render_index_html,
+    render_page_html, render_sitemap_xml,
 };
 
 use super::config::resolve_base_url;
@@ -92,7 +92,7 @@ pub async fn page_handler(
 /// Token 生成器页面处理器
 pub async fn token_generator_handler() -> impl IntoResponse {
     match std::fs::read_to_string("front/token-generator.html") {
-        Ok(html) => Html(html).into_response(),
+        Ok(html) => Html(inject_umami_script(&html)).into_response(),
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("read token generator html failed: {err}"),

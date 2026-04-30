@@ -1,7 +1,10 @@
 use crate::store::{PageMeta, PageStore};
-use anyhow::{bail, Context, Result};
-use pulldown_cmark::{Options, Parser, html};
+use anyhow::{Context, Result, bail};
 use chrono::{TimeZone, Utc};
+use pulldown_cmark::{Options, Parser, html};
+
+const UMAMI_WEBSITE_ID: &str = "85120b22-12c5-47a8-900c-131f7cccee80";
+const UMAMI_SCRIPT: &str = "<script defer src=\"https://umami.cd.actrue.cn/script.js\" data-website-id=\"85120b22-12c5-47a8-900c-131f7cccee80\"></script>";
 
 pub fn build_page_url(page_id: &str, seo_title: &str) -> String {
     if seo_title.is_empty() {
@@ -21,10 +24,10 @@ pub fn parse_page_id_from_slug(slug: &str) -> Option<String> {
 }
 
 pub fn render_index_html(store: &PageStore) -> Result<String> {
-    let header_html = std::fs::read_to_string("front/header.html")
-        .context("read front/header.html template")?;
-    let template = std::fs::read_to_string("front/index.html")
-        .context("read front/index.html template")?;
+    let header_html =
+        std::fs::read_to_string("front/header.html").context("read front/header.html template")?;
+    let template =
+        std::fs::read_to_string("front/index.html").context("read front/index.html template")?;
     let entries = store.list_page_entries().context("list page entries")?;
     let mut pages = Vec::new();
     for entry in entries {
@@ -77,9 +80,7 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
     }
 
     if rows.is_empty() {
-        rows.push_str(
-            "<div class=\"empty\">暂无页面内容，请先通过 MCP 接口发布页面。</div>",
-        );
+        rows.push_str("<div class=\"empty\">暂无页面内容，请先通过 MCP 接口发布页面。</div>");
     }
 
     let beian_number = std::env::var("BEIAN_NUMBER")
@@ -116,16 +117,16 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
         ],
     )?;
 
-    Ok(rendered)
+    Ok(inject_umami_script(&rendered))
 }
 
 pub fn render_404_html() -> Result<String> {
-    let header_html = std::fs::read_to_string("front/header.html")
-        .context("read front/header.html template")?;
-    let template = std::fs::read_to_string("front/404.html")
-        .context("read front/404.html template")?;
+    let header_html =
+        std::fs::read_to_string("front/header.html").context("read front/header.html template")?;
+    let template =
+        std::fs::read_to_string("front/404.html").context("read front/404.html template")?;
     let rendered = replace_template(&template, &[("site_header", &header_html)])?;
-    Ok(rendered)
+    Ok(inject_umami_script(&rendered))
 }
 
 fn replace_template(template: &str, values: &[(&str, &str)]) -> Result<String> {
@@ -146,7 +147,8 @@ pub fn render_page_html(meta: &PageMeta, html: &str) -> String {
     } else {
         &meta.seo.title
     };
-    inject_seo_meta(html, title, &meta.seo)
+    let rendered = inject_seo_meta(html, title, &meta.seo);
+    inject_umami_script(&rendered)
 }
 
 pub fn markdown_to_html(markdown: &str) -> String {
@@ -164,15 +166,18 @@ pub fn markdown_to_html(markdown: &str) -> String {
 
 pub fn render_markdown_page(markdown: &str) -> Result<String> {
     let markdown_html = markdown_to_html(markdown);
-    let header_html = std::fs::read_to_string("front/header.html")
-        .context("read front/header.html template")?;
+    let header_html =
+        std::fs::read_to_string("front/header.html").context("read front/header.html template")?;
     let template = std::fs::read_to_string("front/markdown.html")
         .context("read front/markdown.html template")?;
     let rendered = replace_template(
         &template,
-        &[("site_header", &header_html), ("markdown_html", &markdown_html)],
+        &[
+            ("site_header", &header_html),
+            ("markdown_html", &markdown_html),
+        ],
     )?;
-    Ok(rendered)
+    Ok(inject_umami_script(&rendered))
 }
 
 pub fn render_sitemap_xml(store: &PageStore, base_url: &str) -> Result<String> {
@@ -187,10 +192,7 @@ pub fn render_sitemap_xml(store: &PageStore, base_url: &str) -> Result<String> {
         let page_url = format!("{}{}", base, page_path);
         let lastmod = format_unix_timestamp(meta.updated_at);
         body.push_str("  <url>\n");
-        body.push_str(&format!(
-            "    <loc>{}</loc>\n",
-            escape_xml(&page_url)
-        ));
+        body.push_str(&format!("    <loc>{}</loc>\n", escape_xml(&page_url)));
         body.push_str(&format!(
             "    <lastmod>{}</lastmod>\n",
             escape_xml(&lastmod)
@@ -274,6 +276,60 @@ pub fn inject_seo_meta(html: &str, title: &str, seo: &crate::store::SeoMeta) -> 
         out.push_str(&html[..body_pos]);
         out.push_str("<head>");
         out.push_str(&additions);
+        out.push_str("</head>");
+        out.push_str(&html[body_pos..]);
+        return out;
+    }
+
+    format!("<head>{}</head>{}", additions, html)
+}
+
+pub fn inject_umami_script(html: &str) -> String {
+    if html.contains(UMAMI_WEBSITE_ID) {
+        return html.to_string();
+    }
+    inject_head_additions(html, UMAMI_SCRIPT)
+}
+
+fn inject_head_additions(html: &str, additions: &str) -> String {
+    let mut out = String::new();
+    let bytes = html.as_bytes();
+    let mut index = 0usize;
+    let mut head_start: Option<usize> = None;
+    while index < bytes.len() {
+        if bytes[index] == b'<' {
+            if let Some((name, after_name)) = parse_tag_name_ci(bytes, index + 1) {
+                if name.eq_ignore_ascii_case("head") {
+                    if let Some(end) = find_tag_end(bytes, after_name) {
+                        head_start = Some(end + 1);
+                        break;
+                    }
+                }
+            }
+        }
+        index += 1;
+    }
+
+    if let Some(insert_at) = head_start {
+        out.push_str(&html[..insert_at]);
+        out.push_str(additions);
+        out.push_str(&html[insert_at..]);
+        return out;
+    }
+
+    if let Some(insert_at) = find_html_tag_end(bytes) {
+        out.push_str(&html[..insert_at]);
+        out.push_str("<head>");
+        out.push_str(additions);
+        out.push_str("</head>");
+        out.push_str(&html[insert_at..]);
+        return out;
+    }
+
+    if let Some(body_pos) = find_bytes_ci(bytes, 0, b"<body") {
+        out.push_str(&html[..body_pos]);
+        out.push_str("<head>");
+        out.push_str(additions);
         out.push_str("</head>");
         out.push_str(&html[body_pos..]);
         return out;
@@ -422,7 +478,10 @@ fn find_bytes_ci(haystack: &[u8], start: usize, needle: &[u8]) -> Option<usize> 
     if start >= haystack.len() || needle.len() > haystack.len() {
         return None;
     }
-    let needle_lower: Vec<u8> = needle.iter().map(|byte| byte.to_ascii_lowercase()).collect();
+    let needle_lower: Vec<u8> = needle
+        .iter()
+        .map(|byte| byte.to_ascii_lowercase())
+        .collect();
     let end = haystack.len().saturating_sub(needle_lower.len());
     for index in start..=end {
         let mut matched = true;
