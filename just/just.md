@@ -69,7 +69,7 @@ just deploy
 SOLINBLOG_DEPLOY_DRY_RUN=1 just deploy
 ```
 
-服务的 `WEB_HOST`、`WEB_PORT`、`MCP_TOKEN`、`SITE_URL` 等配置建议维护在项目根目录 `.env` 中，因为部署后的工作目录固定为项目根目录。
+服务的 `WEB_HOST`、`WEB_PORT`、`TOKEN`、`SITE_URL` 等配置建议维护在项目根目录 `.env` 中，因为部署后的工作目录固定为项目根目录。
 
 ## 服务管理
 

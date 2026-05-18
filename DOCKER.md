@@ -16,7 +16,7 @@
 cp .env.example .env
 ```
 
-2) 按需修改 [`.env`](.env.example:1)（至少建议设置 [`SITE_URL`](.env.example:3) 与 [`MCP_TOKEN`](.env.example:4)）。
+2) 按需修改 [`.env`](.env.example:1)（至少建议设置 [`SITE_URL`](.env.example:3) 与 [`TOKEN`](.env.example:4)）。
 
 3) 一键启动：
 
@@ -56,7 +56,7 @@ docker compose logs -f solinblog
 | `WEB_HOST` | 否 | Web 服务监听地址 | 若未设置，代码默认回退到 `127.0.0.1`；容器部署务必设为 `0.0.0.0`（Compose 已设置，见 [`WEB_HOST`](docker-compose.yml:13)；镜像也在 [`Dockerfile`](Dockerfile:15) 里设置了默认值）。 |
 | `WEB_PORT` | 否 | Web 服务监听端口 | 代码默认 `3000`；Docker 镜像默认 `3002`（见 [`Dockerfile`](Dockerfile:16)）；Compose 映射为 `3002:3002`（见 [`ports`](docker-compose.yml:14)）。 |
 | `SITE_URL` | **建议必填** | 站点对外访问的基础 URL（用于生成完整 URL） | 用于在缺少请求头时解析 base url（见 [`resolve_base_url()`](src/web/config.rs:1)），以及 MCP URL 生成（见 [`resolve_site_url_from_env()`](src/mcp/utils.rs:1)）。生产环境强烈建议填写，例如 `https://blog.example.com`（不要以 `/` 结尾）。 |
-| `MCP_TOKEN` | **建议必填** | MCP 接口认证 Token（通过 `Authorization: Bearer {token}` 头认证） | 若为空，服务会自动生成并在启动日志打印。建议显式配置，避免每次重启 token 变化。 |
+| `TOKEN` | **建议必填** | MCP 和管理 API 认证 Token（通过 `Authorization: Bearer {token}` 头认证） | 若为空，服务会自动生成并在启动日志打印。建议显式配置，避免每次重启 token 变化。 |
 | `BEIAN_NUMBER` | 否 | 首页底部备案号展示 | 为空则不显示；非空则渲染到首页 footer（见 [`render_index_html()`](src/web_core.rs:1)）。 |
 
 ### 2.2 配置示例
@@ -67,11 +67,11 @@ docker compose logs -f solinblog
 WEB_HOST=0.0.0.0
 WEB_PORT=3002
 SITE_URL=https://example.com
-MCP_TOKEN=please-change-me
+TOKEN=please-change-me
 BEIAN_NUMBER=浙ICP备2024056246号
 ```
 
-> 提示：如果你让系统自动生成 `MCP_TOKEN`，可通过 `docker compose logs -f solinblog` 查看启动时打印的 token。
+> 提示：如果你让系统自动生成 `TOKEN`，可通过 `docker compose logs -f solinblog` 查看启动时打印的 token。
 
 ### 2.3 MCP 连接方式
 
@@ -80,7 +80,7 @@ MCP 端点固定为 `/mcp`，认证通过 HTTP 头 `Authorization: Bearer {token
 ```bash
 # 使用 curl 测试连接
 curl -X POST \
-  -H "Authorization: Bearer ${MCP_TOKEN}" \
+  -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' \
   http://localhost:3002/mcp
@@ -94,7 +94,7 @@ AI 客户端（如 Roo/Cline）配置示例：
       "url": "http://localhost:3002/mcp",
       "transport": "streamable-http",
       "headers": {
-        "Authorization": "Bearer ${MCP_TOKEN}"
+        "Authorization": "Bearer ${TOKEN}"
       }
     }
   }
@@ -257,4 +257,3 @@ server {
 ```
 
 > 注：若你使用 HTTPS（推荐），请在对应的 `server { listen 443 ssl; ... }` 中同样保留 `proxy_set_header X-Forwarded-Proto $scheme;`。
-

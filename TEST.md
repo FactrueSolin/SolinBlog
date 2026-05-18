@@ -26,7 +26,7 @@
 
 ```bash
 # 必需
-MCP_TOKEN=your_test_token_here   # MCP 认证 token，留空则自动生成
+TOKEN=your_test_token_here       # 认证 token，留空则自动生成
 WEB_PORT=3000                    # HTTP 端口
 WEB_HOST=127.0.0.1               # 监听地址
 
@@ -141,7 +141,7 @@ chmod +x tests/*.sh
 
 MCP 接口通过 `/{token}/mcp` 路径访问。使用 `tests/test_mcp_tools.sh` 进行测试。
 
-> **前置条件**：设置环境变量 `MCP_TOKEN` 后启动服务，或从启动日志中获取自动生成的 token。
+> **前置条件**：设置环境变量 `TOKEN` 后启动服务，或从启动日志中获取自动生成的 token。
 
 ### 4.1 push_page — 创建 HTML 页面
 
@@ -317,7 +317,7 @@ cargo run --bin store_selfcheck
 
 ```bash
 # 设置测试 token
-export MCP_TOKEN=test_token_123
+export TOKEN=test_token_123
 cargo run
 ```
 

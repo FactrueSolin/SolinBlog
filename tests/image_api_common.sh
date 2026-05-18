@@ -205,7 +205,7 @@ start_test_server() {
         cd "${IMAGE_API_TEST_TMP}"
         WEB_HOST="127.0.0.1" \
             WEB_PORT="${port}" \
-            MCP_TOKEN="${TEST_TOKEN}" \
+            TOKEN="${TEST_TOKEN}" \
             SITE_URL="${BASE_URL}" \
             IMAGE_MAX_UPLOAD_MB="1" \
             "${server_bin}"

@@ -2,7 +2,7 @@
 
 ## 目标与边界
 
-图床作为 SolinBlog 的独立能力加入项目：提供一个不进入首页导航的 `/image` 前端管理页，支持上传图片并返回公开访问 URL。图片文件存储在 `data` 目录下，图片读取公开，上传、删除、更新、管理列表等写操作复用 `MCP_TOKEN` 做 Bearer 鉴权。
+图床作为 SolinBlog 的独立能力加入项目：提供一个不进入首页导航的 `/image` 前端管理页，支持上传图片并返回公开访问 URL。图片文件存储在 `data` 目录下，图片读取公开，上传、删除、更新、管理列表等写操作复用 `TOKEN` 做 Bearer 鉴权。
 
 本设计保持项目简介和现有边界：页面发布继续由 `PageStore` 负责，现有 `src/image.rs` 的 SearXNG 图片搜索语义不改动；新增图床能力建议使用独立模块，避免把“搜索图片”和“托管图片”混在一起。
 
@@ -26,7 +26,7 @@
 图床 API 第一版只提供 REST JSON + multipart，不引入 session、cookie、GraphQL 或预签名上传。除公开图片读取外，所有 `/api/images` 接口都必须带：
 
 ```http
-Authorization: Bearer <MCP_TOKEN>
+Authorization: Bearer <TOKEN>
 ```
 
 所有 JSON API 统一返回 `ImageApiResponse<T>`：
@@ -355,13 +355,13 @@ data/
 | --- | --- | --- |
 | `IMAGE_MAX_UPLOAD_MB` | `10` | 单张图片上传上限 |
 | `SITE_URL` | 无 | 非请求上下文生成图片 URL 时使用 |
-| `MCP_TOKEN` | 必填 | 管理 API Bearer 鉴权 |
+| `TOKEN` | 必填 | 管理 API Bearer 鉴权 |
 
 第一版不需要单独的 `IMAGE_PUBLIC_BASE_URL`。URL 生成优先使用请求头中的 host/proto，脱离请求上下文时使用 `SITE_URL`，保持和页面 URL 生成策略一致。
 
 ## 鉴权设计
 
-鉴权复用现有 `MCP_TOKEN` 和 `TokenStore`。建议把 `mcp_auth_middleware` 重命名或补充导出为更通用的 `bearer_auth_middleware`，也可以先直接复用现有函数，语义上作为“受保护 API 鉴权中间件”。
+鉴权复用现有 `TOKEN` 和 `TokenStore`。建议把 `mcp_auth_middleware` 重命名或补充导出为更通用的 `bearer_auth_middleware`，也可以先直接复用现有函数，语义上作为“受保护 API 鉴权中间件”。
 
 管理 API 使用独立受保护 Router：
 
@@ -442,7 +442,7 @@ URL 生成逻辑复用 `resolve_base_url()` 的请求头优先策略；MCP 或�
 
 | 区域 | 桌面端位置 | 移动端位置 | 作用 |
 | --- | --- | --- | --- |
-| Token 状态条 | 顶部横条 | 顶部横条 | 输入、保存、清除 `MCP_TOKEN`，显示当前鉴权状态 |
+| Token 状态条 | 顶部横条 | 顶部横条 | 输入、保存、清除 `TOKEN`，显示当前鉴权状态 |
 | 上传卡片 | 左侧主卡片 | 第一屏 | 拖拽或选择图片，填写 alt、description |
 | 上传结果卡片 | 左侧上传卡片下方 | 上传卡片下方 | 展示预览、公开 URL、Markdown、HTML 复制按钮 |
 | 管理列表 | 右侧宽卡片 | 结果卡片下方 | 搜索、分页、复制、编辑、替换、删除 |
@@ -464,7 +464,7 @@ URL 生成逻辑复用 `resolve_base_url()` 的请求头优先策略；MCP 或�
 
 | 场景 | UX 表现 |
 | --- | --- |
-| 未输入 token | 上传、加载列表、编辑、替换、删除按钮置灰；显示“需要 MCP_TOKEN 才能管理图片” |
+| 未输入 token | 上传、加载列表、编辑、替换、删除按钮置灰；显示“需要 token 才能管理图片” |
 | token 已填写 | 状态条显示“Token 已就绪”；不展示 token 明文，只提供清除按钮 |
 | token 鉴权失败 | 保留用户输入，提示 `401 unauthorized`，引导重新粘贴 token |
 | 拖拽文件悬停 | 上传卡片边框强化，文案变为“松开以上传图片” |
@@ -539,7 +539,7 @@ Token 可以写入 `sessionStorage`，不建议写入 `localStorage`。页面刷
 
 | 区域 | 功能 |
 | --- | --- |
-| Token 输入 | 用户粘贴 `MCP_TOKEN`，仅保存在浏览器内存或 `sessionStorage` |
+| Token 输入 | 用户粘贴 `TOKEN`，仅保存在浏览器内存或 `sessionStorage` |
 | 上传区 | 拖拽或选择图片，填写 alt、description |
 | 结果区 | 展示公开 URL、Markdown 图片语法、HTML img 标签 |
 | 管理区 | 拉取图片列表，支持复制 URL、替换、更新描述、删除 |
@@ -612,7 +612,7 @@ Token 可以写入 `sessionStorage`，不建议写入 `localStorage`。页面刷
 | --- | --- |
 | 访问 `/image` | 返回图床管理页面，首页没有导航入口 |
 | 无 token 上传 | 返回 `401 Unauthorized` |
-| 使用 `Authorization: Bearer $MCP_TOKEN` 上传图片 | 返回 `success=true` 和公开 URL |
+| 使用 `Authorization: Bearer $TOKEN` 上传图片 | 返回 `success=true` 和公开 URL |
 | 浏览器打开返回的 URL | 能直接看到图片，不需要 token |
 | 删除图片后访问旧 URL | 返回 404 |
 | 替换图片后使用旧 filename URL 访问 | 返回 404，使用新 URL 可访问 |
@@ -622,4 +622,4 @@ Token 可以写入 `sessionStorage`，不建议写入 `localStorage`。页面刷
 
 ## 架构结论
 
-图床能力应该作为 SolinBlog 的“公开资产托管”子系统，而不是博客页面系统的一部分。公开读取与受保护管理路由分离，存储统一落在 `data/images`，鉴权复用 `MCP_TOKEN`，前端通过独立 `/image` 页面提供管理体验。这样既满足 AI 发布文章时快速获得图片 URL 的需求，也不会破坏现有首页、页面存储和 MCP 工具结构。
+图床能力应该作为 SolinBlog 的“公开资产托管”子系统，而不是博客页面系统的一部分。公开读取与受保护管理路由分离，存储统一落在 `data/images`，鉴权复用 `TOKEN`，前端通过独立 `/image` 页面提供管理体验。这样既满足 AI 发布文章时快速获得图片 URL 的需求，也不会破坏现有首页、页面存储和 MCP 工具结构。

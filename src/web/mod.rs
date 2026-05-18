@@ -6,7 +6,7 @@ pub mod config;
 pub mod handlers;
 pub mod image_handlers;
 
-pub use config::{generate_mcp_token, resolve_base_url};
+pub use config::{generate_token, resolve_base_url};
 pub use handlers::{
     index_handler, log_request, page_handler, public_asset_handler, sitemap_handler,
     token_generator_handler,

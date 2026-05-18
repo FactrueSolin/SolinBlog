@@ -3,20 +3,59 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/public/icon.png" />
     <title>SolinBlog 图床</title>
     <style>
       :root {
-        color-scheme: light;
+        color-scheme: light dark;
+        --bg-start: #fbf7ef;
         --bg: #f4f0e8;
         --panel: #fffdf8;
+        --panel-alpha: rgba(255, 253, 248, 0.88);
         --ink: #24201b;
         --muted: #766f66;
         --line: #ded4c5;
         --accent: #8b4d2e;
         --accent-dark: #62331e;
+        --button-ink: #ffffff;
         --soft: #efe4d5;
+        --soft-hover: #e2d3c0;
+        --input: #ffffff;
+        --input-soft: #fffaf2;
+        --drop: #fff9ef;
+        --drop-active: #f6eadb;
+        --glow: rgba(139, 77, 46, 0.12);
+        --shadow: rgba(70, 47, 24, 0.1);
         --danger: #a33b32;
+        --danger-soft: #f0d8d5;
         --ok: #287246;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --bg-start: #101a27;
+          --bg: #182434;
+          --panel: #1f2e41;
+          --panel-alpha: rgba(31, 46, 65, 0.88);
+          --ink: #e0e7f1;
+          --muted: rgba(224, 231, 241, 0.72);
+          --line: rgba(255, 255, 255, 0.15);
+          --accent: #a4c3b2;
+          --accent-dark: #c0d8cb;
+          --button-ink: #132033;
+          --soft: rgba(164, 195, 178, 0.16);
+          --soft-hover: rgba(164, 195, 178, 0.26);
+          --input: rgba(18, 28, 41, 0.82);
+          --input-soft: rgba(18, 28, 41, 0.62);
+          --drop: rgba(18, 28, 41, 0.5);
+          --drop-active: rgba(164, 195, 178, 0.18);
+          --glow: rgba(164, 195, 178, 0.12);
+          --shadow: rgba(0, 0, 0, 0.35);
+          --danger: #ffb4aa;
+          --danger-soft: rgba(255, 180, 170, 0.16);
+          --ok: #9bd6a9;
+        }
       }
 
       * {
@@ -27,8 +66,8 @@
         margin: 0;
         min-height: 100vh;
         background:
-          radial-gradient(circle at top left, rgba(139, 77, 46, 0.12), transparent 34rem),
-          linear-gradient(135deg, #fbf7ef, var(--bg));
+          radial-gradient(circle at top left, var(--glow), transparent 34rem),
+          linear-gradient(135deg, var(--bg-start), var(--bg));
         color: var(--ink);
         font-family: "Times New Roman", "Hiragino Sans GB", "Microsoft YaHei", serif;
       }
@@ -44,7 +83,7 @@
         border-radius: 999px;
         padding: 0.72rem 1rem;
         background: var(--accent);
-        color: white;
+        color: var(--button-ink);
         cursor: pointer;
         transition: transform 0.12s ease, background 0.16s ease, opacity 0.16s ease;
       }
@@ -65,11 +104,11 @@
       }
 
       .ghost:hover:not(:disabled) {
-        background: #e2d3c0;
+        background: var(--soft-hover);
       }
 
       .danger {
-        background: #f0d8d5;
+        background: var(--danger-soft);
         color: var(--danger);
       }
 
@@ -106,10 +145,10 @@
 
       .token-bar,
       .card {
-        background: rgba(255, 253, 248, 0.88);
+        background: var(--panel-alpha);
         border: 1px solid var(--line);
         border-radius: 24px;
-        box-shadow: 0 24px 80px rgba(70, 47, 24, 0.1);
+        box-shadow: 0 24px 80px var(--shadow);
         backdrop-filter: blur(12px);
       }
 
@@ -131,7 +170,7 @@
         border: 1px solid var(--line);
         border-radius: 16px;
         padding: 0.75rem 0.9rem;
-        background: white;
+        background: var(--input);
         color: var(--ink);
         outline: none;
       }
@@ -156,10 +195,15 @@
 
       .layout {
         display: grid;
-        grid-template-columns: minmax(320px, 420px) 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 18px;
         margin-top: 18px;
         align-items: start;
+      }
+
+      .stack {
+        display: grid;
+        gap: 18px;
       }
 
       .card {
@@ -175,7 +219,7 @@
         border: 2px dashed var(--line);
         border-radius: 22px;
         padding: 28px 18px;
-        background: #fff9ef;
+        background: var(--drop);
         text-align: center;
         cursor: pointer;
         transition: border-color 0.16s ease, background 0.16s ease;
@@ -183,7 +227,7 @@
 
       .dropzone.drag {
         border-color: var(--accent);
-        background: #f6eadb;
+        background: var(--drop-active);
       }
 
       .dropzone strong {
@@ -204,7 +248,7 @@
         padding: 10px;
         border: 1px solid var(--line);
         border-radius: 18px;
-        background: white;
+        background: var(--input);
       }
 
       .preview img,
@@ -243,7 +287,7 @@
         padding: 0.75rem 0.85rem;
         border: 1px solid var(--line);
         border-radius: 14px;
-        background: #fffaf2;
+        background: var(--input-soft);
       }
 
       .search {
@@ -265,7 +309,7 @@
         padding: 12px;
         border: 1px solid var(--line);
         border-radius: 20px;
-        background: white;
+        background: var(--input);
       }
 
       .item-title {
@@ -309,7 +353,6 @@
         }
 
         .token-bar,
-        .layout,
         .search {
           grid-template-columns: 1fr;
         }
@@ -332,18 +375,18 @@
     <main class="shell">
       <section class="hero">
         <h1>Image Hosting</h1>
-        <p>为 AI 发布文章快速生成公开图片 URL。页面本身公开访问，上传、列表、编辑、替换、删除都需要 MCP_TOKEN。</p>
+        <p>为 AI 发布文章快速生成公开图片 URL。页面本身公开访问，上传、列表、编辑、替换、删除都需要 token。</p>
       </section>
 
       <section class="token-bar" aria-label="Token 设置">
-        <input id="token-input" type="password" autocomplete="off" placeholder="粘贴 MCP_TOKEN，仅保存在 sessionStorage" />
+        <input id="token-input" type="password" autocomplete="off" placeholder="粘贴 token，仅保存在 sessionStorage" />
         <button id="save-token" type="button">保存 Token</button>
         <button id="clear-token" class="ghost" type="button">清除</button>
-        <div id="token-status" class="status">需要 MCP_TOKEN 才能管理图片</div>
+        <div id="token-status" class="status">需要 token 才能管理图片</div>
       </section>
 
       <section class="layout">
-        <div>
+        <div class="stack">
           <section class="card">
             <h2>上传图片</h2>
             <div id="dropzone" class="dropzone" role="button" tabindex="0">
@@ -366,6 +409,17 @@
             </div>
           </section>
 
+          <section class="card">
+            <h2>管理列表</h2>
+            <div class="search">
+              <input id="search-input" placeholder="搜索 ID、文件名、alt、备注" />
+              <button id="load-list" type="button" disabled>加载列表</button>
+            </div>
+            <div id="list-status" class="status"></div>
+            <div id="image-list" class="image-list"></div>
+            <button id="load-more" class="ghost" type="button" style="display: none; margin-top: 14px">加载更多</button>
+          </section>
+
           <section id="result" class="card result">
             <h2>最近结果</h2>
             <img id="result-preview" class="thumb" alt="" />
@@ -374,17 +428,6 @@
             <div class="copy-row"><code id="result-html"></code><button data-copy="html" class="ghost" type="button">复制 HTML</button></div>
           </section>
         </div>
-
-        <section class="card">
-          <h2>管理列表</h2>
-          <div class="search">
-            <input id="search-input" placeholder="搜索 ID、文件名、alt、备注" />
-            <button id="load-list" type="button" disabled>加载列表</button>
-          </div>
-          <div id="list-status" class="status"></div>
-          <div id="image-list" class="image-list"></div>
-          <button id="load-more" class="ghost" type="button" style="display: none; margin-top: 14px">加载更多</button>
-        </section>
       </section>
     </main>
 
@@ -423,7 +466,7 @@
         tokenInput.value = state.token ? "••••••••••••••••" : "";
         uploadBtn.disabled = !hasToken() || !state.selectedFile;
         loadListBtn.disabled = !hasToken();
-        setStatus(tokenStatus, hasToken() ? "Token 已就绪" : "需要 MCP_TOKEN 才能管理图片", hasToken() ? "ok" : "");
+        setStatus(tokenStatus, hasToken() ? "Token 已就绪" : "需要 token 才能管理图片", hasToken() ? "ok" : "");
       }
 
       function refreshTokenStateAndLoadImages() {
@@ -432,7 +475,7 @@
         if (hadToken) loadImages(true);
       }
 
-      function clearImageList(message = "需要 MCP_TOKEN 才能加载图片列表") {
+      function clearImageList(message = "需要 token 才能加载图片列表") {
         state.images = [];
         state.offset = 0;
         state.total = 0;
@@ -558,7 +601,7 @@
             state.token = "";
             sessionStorage.removeItem("solin_image_token");
             refreshTokenState();
-            clearImageList("Token 无效，请重新填写 MCP_TOKEN");
+            clearImageList("Token 无效，请重新填写 token");
           }
         }
       }

@@ -20,7 +20,7 @@ use solin_blog::web::{
     public_asset_handler, replace_image_handler, sitemap_handler, token_generator_handler,
     update_image_handler, upload_image_handler,
 };
-use solin_blog::web::generate_mcp_token;
+use solin_blog::web::generate_token;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
@@ -43,18 +43,18 @@ async fn main() {
         max_upload_bytes: image_max_upload_mb.saturating_mul(1024 * 1024),
     };
 
-    // 读取 MCP_TOKEN 环境变量
-    let mut mcp_token = std::env::var("MCP_TOKEN")
+    // 读取 TOKEN 环境变量
+    let mut token = std::env::var("TOKEN")
         .unwrap_or_default()
         .trim()
         .to_string();
-    if mcp_token.is_empty() {
-        mcp_token = generate_mcp_token();
-        println!("[solin-blog] MCP token generated: {mcp_token}");
+    if token.is_empty() {
+        token = generate_token();
+        println!("[solin-blog] token generated: {token}");
     }
 
     // 创建 Token 存储
-    let token_store = Arc::new(TokenStore::new(vec![mcp_token.clone()]));
+    let token_store = Arc::new(TokenStore::new(vec![token.clone()]));
 
     // 创建 MCP 服务器
     let mcp_server = BlogMcpServer::new(Arc::clone(&store), Arc::clone(&token_store));
@@ -127,7 +127,7 @@ async fn main() {
     println!("[solin-blog] http server listening on http://{addr}");
     println!("[solin-blog] MCP endpoint: http://{addr}/mcp");
     println!("[solin-blog] image page: http://{addr}/image");
-    println!("[solin-blog] Authorization: Bearer {mcp_token}");
+    println!("[solin-blog] Authorization: Bearer {token}");
 
     axum::serve(listener, app).await.expect("serve http");
 }

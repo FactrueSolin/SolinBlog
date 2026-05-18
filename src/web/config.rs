@@ -32,11 +32,11 @@ pub fn resolve_base_url(headers: &HeaderMap) -> String {
     trimmed.to_string()
 }
 
-/// 生成 MCP Token
-pub fn generate_mcp_token() -> String {
+/// 生成认证 Token
+pub fn generate_token() -> String {
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     let mut bytes = [0u8; 16];
-    getrandom::getrandom(&mut bytes).expect("generate mcp token");
+    getrandom::getrandom(&mut bytes).expect("generate token");
     bytes
         .iter()
         .map(|value| {
