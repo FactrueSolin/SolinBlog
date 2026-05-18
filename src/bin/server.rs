@@ -43,18 +43,30 @@ async fn main() {
         max_upload_bytes: image_max_upload_mb.saturating_mul(1024 * 1024),
     };
 
-    // 读取 TOKEN 环境变量
-    let mut token = std::env::var("TOKEN")
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-    if token.is_empty() {
-        token = generate_token();
+    // 读取鉴权 token。TOKEN 是正式配置名；MCP_TOKEN 作为历史兼容，避免旧部署无法访问。
+    let mut valid_tokens = Vec::new();
+    for key in ["TOKEN", "MCP_TOKEN"] {
+        let value = std::env::var(key).unwrap_or_default().trim().to_string();
+        if !value.is_empty() && !valid_tokens.contains(&value) {
+            valid_tokens.push(value);
+        }
+    }
+    let token = match valid_tokens.first() {
+        Some(token) => token.clone(),
+        None => {
+            let token = generate_token();
+            valid_tokens.push(token.clone());
+            token
+        }
+    };
+    if std::env::var("TOKEN").unwrap_or_default().trim().is_empty()
+        && std::env::var("MCP_TOKEN").unwrap_or_default().trim().is_empty()
+    {
         println!("[solin-blog] token generated: {token}");
     }
 
     // 创建 Token 存储
-    let token_store = Arc::new(TokenStore::new(vec![token.clone()]));
+    let token_store = Arc::new(TokenStore::new(valid_tokens));
 
     // 创建 MCP 服务器
     let mcp_server = BlogMcpServer::new(Arc::clone(&store), Arc::clone(&token_store));
