@@ -1,28 +1,34 @@
+set windows-shell := ["pwsh", "-NoLogo", "-Command"]
+
 script_dir := justfile_directory() / "just"
+test_dir := justfile_directory() / "tests"
 
 default:
     @just --list
 
 check:
-    @"{{script_dir}}/check.sh"
+    @bash -lc 'bash just/check.sh'
+
+test-image-api:
+    @bash -lc 'bash tests/image_api_all.sh'
 
 build:
-    @"{{script_dir}}/build-release.sh"
+    @bash -lc 'bash just/build-release.sh'
 
 run:
-    @"{{script_dir}}/run.sh"
+    @bash -lc 'bash just/run.sh'
 
 deploy:
-    @"{{script_dir}}/deploy-macos.sh"
+    @bash -lc 'bash just/deploy-macos.sh'
 
 undeploy:
-    @"{{script_dir}}/undeploy-macos.sh"
+    @bash -lc 'bash just/undeploy-macos.sh'
 
 status:
-    @"{{script_dir}}/status-macos.sh"
+    @bash -lc 'bash just/status-macos.sh'
 
 logs:
-    @"{{script_dir}}/logs-macos.sh"
+    @bash -lc 'bash just/logs-macos.sh'
 
 help:
     @sed -n '1,240p' "{{script_dir}}/just.md"

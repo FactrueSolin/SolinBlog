@@ -17,6 +17,12 @@ just check
 执行 `cargo check`。按项目约定，自动化验证只保证通过 `cargo check`。
 
 ```bash
+just test-image-api
+```
+
+执行图床后端 API 的 sh 集成测试。测试会启动隔离的本地 server，覆盖鉴权、上传、公开读取、列表/详情、元数据更新、替换、删除和错误输入。
+
+```bash
 just build
 ```
 

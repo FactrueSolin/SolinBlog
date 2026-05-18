@@ -1,7 +1,7 @@
 use axum::{
     Json,
     body::Body,
-    extract::{Multipart, Path, Query, State},
+    extract::{Multipart, Path, Query, State, multipart::MultipartError},
     http::{
         HeaderMap, HeaderValue, Request, StatusCode,
         header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, ETAG, IF_NONE_MATCH},
@@ -289,7 +289,7 @@ async fn read_multipart_image(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|_| ImageHostError::InvalidRequest("invalid multipart body".to_string()))?
+        .map_err(multipart_error)?
     {
         let name = field.name().unwrap_or_default().to_string();
         match name.as_str() {
@@ -299,23 +299,17 @@ async fn read_multipart_image(
                         "only one file is allowed".to_string(),
                     ));
                 }
-                let bytes = field.bytes().await.map_err(|_| {
-                    ImageHostError::InvalidRequest("read multipart file failed".to_string())
-                })?;
+                let bytes = field.bytes().await.map_err(multipart_error)?;
                 if bytes.len() > max_upload_bytes {
                     return Err(ImageHostError::PayloadTooLarge);
                 }
                 file = Some(bytes.to_vec());
             }
             "alt" => {
-                alt = Some(field.text().await.map_err(|_| {
-                    ImageHostError::InvalidRequest("read alt failed".to_string())
-                })?);
+                alt = Some(field.text().await.map_err(multipart_error)?);
             }
             "description" => {
-                description = Some(field.text().await.map_err(|_| {
-                    ImageHostError::InvalidRequest("read description failed".to_string())
-                })?);
+                description = Some(field.text().await.map_err(multipart_error)?);
             }
             _ => {}
         }
@@ -327,6 +321,14 @@ async fn read_multipart_image(
         alt,
         description,
     })
+}
+
+fn multipart_error(error: MultipartError) -> ImageHostError {
+    if error.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        ImageHostError::PayloadTooLarge
+    } else {
+        ImageHostError::InvalidRequest(error.body_text())
+    }
 }
 
 fn api_success<T: Serialize>(data: T) -> Response {
