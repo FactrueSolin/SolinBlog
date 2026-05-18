@@ -207,6 +207,72 @@ ETag: "sha256-..."
 
 `ETag` 使用 `sha256` 派生。若请求带 `If-None-Match` 且命中，返回 `304 Not Modified`。公开读取必须使用 `tokio_util::io::ReaderStream` 或等价流式响应，不应把大文件完整读入内存。
 
+## 后端数据设计
+
+图床第一版采用“文件系统 + 单文件索引”的轻量持久化形态，但数据模型按数据库表设计，保证后续迁移 SQLite、PostgreSQL 或对象存储元数据库时不需要重写 API 语义。核心实体只有 `images`，不引入用户、相册、标签、权限表，避免把图床第一版扩展成网盘系统。
+
+### 逻辑实体：images
+
+`images` 表示一张当前可访问的托管图片。删除采用硬删除语义：元数据从索引移除，图片文件随后删除；第一版不保留回收站、不保留历史版本。
+
+| 字段 | 类型 | 约束 | 说明 |
+| --- | --- | --- | --- |
+| `image_id` | string | 主键；`img_` + 12 到 16 位 URL-safe 随机串 | 对外稳定 ID，不可由文件名、时间戳或 hash 派生 |
+| `filename` | string | 非空；唯一；由服务端生成 | 公开 URL 的文件名部分，格式建议为 `{image_id}.{ext}` |
+| `relative_path` | string | 非空；唯一 | 相对 `data/images` 的内部文件路径，例如 `files/2026/05/img_x.png` |
+| `content_type` | string | 非空；白名单 | 响应 MIME，来自服务端解码和类型判断结果 |
+| `size_bytes` | integer | `> 0`；小于上传限制 | 文件大小，用于列表展示和响应头 |
+| `width` | integer | `> 0` | 图片宽度，解码得到 |
+| `height` | integer | `> 0` | 图片高度，解码得到 |
+| `sha256` | string | 非空；64 位 hex | 内容摘要，用于 ETag、完整性检查；第一版不强制唯一 |
+| `alt` | string | 可空字符串；最大 200 字符 | 展示替代文本，由管理端维护 |
+| `description` | string | 可空字符串；最大 1000 字符 | 管理备注，不参与公开读取逻辑 |
+| `created_at` | integer | Unix seconds；不可变 | 创建时间，列表默认排序依据 |
+| `updated_at` | integer | Unix seconds；`>= created_at` | 元数据更新或文件替换时间 |
+
+不建议保存上传者提供的原始文件名。原始文件名常包含本地路径、截图标题或业务信息，保存价值低，隐私风险高；如果后续确实需要审计，再新增 `original_filename` 并只在管理端展示。
+
+### 约束与索引
+
+第一版 `index.json` 在内存中应维护与数据库等价的约束：`image_id` 为主键，`filename` 和 `relative_path` 不能重复，`sha256` 可以重复。允许重复内容上传，因为图床的核心语义是“生成一个新的公开资产 URL”，不是内容去重系统。
+
+管理列表的排序固定为 `created_at desc, image_id desc`。`GET /api/images?q=...` 的搜索范围只覆盖 `image_id`、`filename`、`alt`、`description`，第一版在内存快照中做大小写不敏感包含匹配；后续迁移 SQLite 时再把该能力映射为普通索引或 FTS，不提前引入搜索引擎。
+
+如果未来迁移到 SQLite，等价 schema 建议如下：
+
+```sql
+CREATE TABLE images (
+    image_id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL UNIQUE,
+    relative_path TEXT NOT NULL UNIQUE,
+    content_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL CHECK (size_bytes > 0),
+    width INTEGER NOT NULL CHECK (width > 0),
+    height INTEGER NOT NULL CHECK (height > 0),
+    sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
+    alt TEXT NOT NULL DEFAULT '' CHECK (length(alt) <= 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (length(description) <= 1000),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    CHECK (updated_at >= created_at)
+);
+
+CREATE INDEX idx_images_created_at ON images (created_at DESC, image_id DESC);
+CREATE INDEX idx_images_sha256 ON images (sha256);
+```
+
+### 数据状态流转
+
+图片数据只有四类状态变化：创建、元数据更新、文件替换、删除。创建会新增一条 `images` 记录和一个图片文件；元数据更新只允许修改 `alt`、`description`、`updated_at`；文件替换保持 `image_id` 不变，但会更新 `filename`、`relative_path`、`content_type`、`size_bytes`、`width`、`height`、`sha256`、`updated_at`；删除会移除记录并删除文件。
+
+一致性以索引为准：列表和管理详情只读索引，公开读取先按 `image_id` 查索引再校验 `filename`。如果索引存在但文件缺失，管理接口返回 `409 image_conflict`，公开读取返回 `404`，服务端日志记录缺失路径。启动时不自动扫描文件反向重建索引，避免把未知文件误发布到公网。
+
+### 事务边界
+
+由于第一版没有数据库事务，`ImageStore` 需要用“临时文件 + 原子 rename + 内存写锁”模拟最小事务边界。创建时先在锁外完成上传体限制、图片解码、hash 计算和临时文件写入，再进入写锁检查 ID 冲突、移动文件、更新内存索引并原子写入 `index.json`。如果索引落盘失败，必须尝试删除刚写入的图片文件。
+
+替换时先写入新文件，再更新索引，最后删除旧文件；禁止先删旧文件。删除时先从索引移除并落盘，再删除图片文件；如果文件删除失败，索引仍以删除为准，后续可通过维护脚本清理孤儿文件。
+
 ## 存储设计
 
 建议新增 `ImageStore`，根目录挂在 `data/images`。
