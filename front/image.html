@@ -426,6 +426,21 @@
         setStatus(tokenStatus, hasToken() ? "Token 已就绪" : "需要 MCP_TOKEN 才能管理图片", hasToken() ? "ok" : "");
       }
 
+      function refreshTokenStateAndLoadImages() {
+        const hadToken = hasToken();
+        refreshTokenState();
+        if (hadToken) loadImages(true);
+      }
+
+      function clearImageList(message = "需要 MCP_TOKEN 才能加载图片列表") {
+        state.images = [];
+        state.offset = 0;
+        state.total = 0;
+        renderList();
+        loadMoreBtn.style.display = "none";
+        setStatus($("list-status"), message);
+      }
+
       function authHeaders() {
         return { Authorization: `Bearer ${state.token}` };
       }
@@ -539,7 +554,12 @@
           loadMoreBtn.textContent = state.images.length < state.total ? "加载更多" : "已显示全部图片";
         } catch (err) {
           setStatus($("list-status"), err.message, "err");
-          if (err.message.includes("unauthorized")) refreshTokenState();
+          if (err.message.includes("unauthorized")) {
+            state.token = "";
+            sessionStorage.removeItem("solin_image_token");
+            refreshTokenState();
+            clearImageList("Token 无效，请重新填写 MCP_TOKEN");
+          }
         }
       }
 
@@ -699,12 +719,13 @@
         const raw = tokenInput.value.trim();
         if (raw && !raw.includes("•")) state.token = raw;
         if (state.token) sessionStorage.setItem("solin_image_token", state.token);
-        refreshTokenState();
+        refreshTokenStateAndLoadImages();
       });
       $("clear-token").addEventListener("click", () => {
         state.token = "";
         sessionStorage.removeItem("solin_image_token");
         refreshTokenState();
+        clearImageList();
       });
       tokenInput.addEventListener("focus", () => {
         if (state.token) tokenInput.value = "";
@@ -738,7 +759,7 @@
         button.addEventListener("click", () => copyText(formats(state.lastUpload)[button.dataset.copy], button));
       });
 
-      refreshTokenState();
+      refreshTokenStateAndLoadImages();
     </script>
   </body>
 </html>
