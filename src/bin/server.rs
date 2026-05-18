@@ -3,6 +3,7 @@
 //! 启动 Web 服务器和 MCP 接口
 
 use axum::{
+    extract::DefaultBodyLimit,
     middleware,
     routing::get,
     Router,
@@ -10,11 +11,14 @@ use axum::{
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
+use solin_blog::image_host::ImageStore;
 use solin_blog::mcp::{BlogMcpServer, TokenStore, mcp_auth_middleware};
 use solin_blog::store::PageStore;
 use solin_blog::web::{
-    index_handler, page_handler, public_asset_handler, sitemap_handler,
-    token_generator_handler,
+    ImageWebState, delete_image_handler, get_image_handler, image_asset_handler,
+    image_auth_middleware, image_page_handler, index_handler, list_images_handler, page_handler,
+    public_asset_handler, replace_image_handler, sitemap_handler, token_generator_handler,
+    update_image_handler, upload_image_handler,
 };
 use solin_blog::web::generate_mcp_token;
 use std::net::{IpAddr, SocketAddr};
@@ -26,6 +30,18 @@ async fn main() {
 
     // 初始化数据存储
     let store = Arc::new(PageStore::new("data"));
+    let image_store = Arc::new(
+        ImageStore::load_or_init("data/images").expect("initialize image hosting store"),
+    );
+    let image_max_upload_mb = std::env::var("IMAGE_MAX_UPLOAD_MB")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(10);
+    let image_state = ImageWebState {
+        store: Arc::clone(&image_store),
+        max_upload_bytes: image_max_upload_mb.saturating_mul(1024 * 1024),
+    };
 
     // 读取 MCP_TOKEN 环境变量
     let mut mcp_token = std::env::var("MCP_TOKEN")
@@ -56,16 +72,42 @@ async fn main() {
             mcp_auth_middleware,
         ));
 
-    // 创建主应用路由
-    let app = Router::new()
+    let page_router = Router::new()
         .route("/", get(index_handler))
         .route("/tools/token-generator", get(token_generator_handler))
         .route("/pages/{slug}", get(page_handler))
         .route("/sitemap.xml", get(sitemap_handler))
         .route("/public/{*path}", get(public_asset_handler))
-        .merge(protected_mcp_router)
-        .layer(middleware::from_fn(solin_blog::web::log_request))
         .with_state(store);
+
+    let public_image_router = Router::new()
+        .route("/image", get(image_page_handler))
+        .route("/images/{image_id}/{filename}", get(image_asset_handler))
+        .with_state(image_state.clone());
+
+    let protected_image_router = Router::new()
+        .route("/api/images", get(list_images_handler).post(upload_image_handler))
+        .route(
+            "/api/images/{image_id}",
+            get(get_image_handler)
+                .patch(update_image_handler)
+                .put(replace_image_handler)
+                .delete(delete_image_handler),
+        )
+        .layer(DefaultBodyLimit::max(image_state.max_upload_bytes))
+        .layer(middleware::from_fn_with_state(
+            token_store.clone(),
+            image_auth_middleware,
+        ))
+        .with_state(image_state);
+
+    // 创建主应用路由
+    let app = Router::new()
+        .merge(page_router)
+        .merge(public_image_router)
+        .merge(protected_image_router)
+        .merge(protected_mcp_router)
+        .layer(middleware::from_fn(solin_blog::web::log_request));
 
     // 绑定监听地址
     let host = std::env::var("WEB_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
@@ -84,6 +126,7 @@ async fn main() {
 
     println!("[solin-blog] http server listening on http://{addr}");
     println!("[solin-blog] MCP endpoint: http://{addr}/mcp");
+    println!("[solin-blog] image page: http://{addr}/image");
     println!("[solin-blog] Authorization: Bearer {mcp_token}");
 
     axum::serve(listener, app).await.expect("serve http");

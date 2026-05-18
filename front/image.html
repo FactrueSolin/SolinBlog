@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SolinBlog 图床</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f0e8;
+        --panel: #fffdf8;
+        --ink: #24201b;
+        --muted: #766f66;
+        --line: #ded4c5;
+        --accent: #8b4d2e;
+        --accent-dark: #62331e;
+        --soft: #efe4d5;
+        --danger: #a33b32;
+        --ok: #287246;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(139, 77, 46, 0.12), transparent 34rem),
+          linear-gradient(135deg, #fbf7ef, var(--bg));
+        color: var(--ink);
+        font-family: "Times New Roman", "Hiragino Sans GB", "Microsoft YaHei", serif;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 0.72rem 1rem;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+        transition: transform 0.12s ease, background 0.16s ease, opacity 0.16s ease;
+      }
+
+      button:hover:not(:disabled) {
+        background: var(--accent-dark);
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .ghost {
+        background: var(--soft);
+        color: var(--ink);
+      }
+
+      .ghost:hover:not(:disabled) {
+        background: #e2d3c0;
+      }
+
+      .danger {
+        background: #f0d8d5;
+        color: var(--danger);
+      }
+
+      .danger:hover:not(:disabled) {
+        background: var(--danger);
+        color: white;
+      }
+
+      .shell {
+        width: min(1240px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 48px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 4.5rem);
+        letter-spacing: -0.04em;
+        line-height: 0.92;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 720px;
+        line-height: 1.7;
+      }
+
+      .token-bar,
+      .card {
+        background: rgba(255, 253, 248, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: 0 24px 80px rgba(70, 47, 24, 0.1);
+        backdrop-filter: blur(12px);
+      }
+
+      .token-bar {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+        padding: 12px;
+        position: sticky;
+        top: 12px;
+        z-index: 5;
+      }
+
+      .token-bar input,
+      .search input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 0.75rem 0.9rem;
+        background: white;
+        color: var(--ink);
+        outline: none;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 92px;
+      }
+
+      .status {
+        color: var(--muted);
+        min-height: 1.5rem;
+      }
+
+      .status.ok {
+        color: var(--ok);
+      }
+
+      .status.err {
+        color: var(--danger);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) 1fr;
+        gap: 18px;
+        margin-top: 18px;
+        align-items: start;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .card h2,
+      .card h3 {
+        margin: 0 0 12px;
+      }
+
+      .dropzone {
+        border: 2px dashed var(--line);
+        border-radius: 22px;
+        padding: 28px 18px;
+        background: #fff9ef;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.16s ease, background 0.16s ease;
+      }
+
+      .dropzone.drag {
+        border-color: var(--accent);
+        background: #f6eadb;
+      }
+
+      .dropzone strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .dropzone span,
+      .muted {
+        color: var(--muted);
+      }
+
+      .preview {
+        display: none;
+        gap: 12px;
+        align-items: center;
+        margin-top: 14px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: white;
+      }
+
+      .preview img,
+      .thumb {
+        width: 76px;
+        height: 76px;
+        object-fit: cover;
+        border-radius: 16px;
+        background: var(--soft);
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .result {
+        display: none;
+        margin-top: 18px;
+      }
+
+      .copy-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+
+      .copy-row code {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0.75rem 0.85rem;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fffaf2;
+      }
+
+      .search {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .image-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .image-item {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 14px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: white;
+      }
+
+      .item-title {
+        margin: 0 0 4px;
+        font-weight: 700;
+        word-break: break-all;
+      }
+
+      .item-meta {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.94rem;
+      }
+
+      .item-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .edit-box {
+        display: none;
+        grid-column: 1 / -1;
+        gap: 8px;
+      }
+
+      .replace-input {
+        display: none;
+      }
+
+      .notice {
+        margin: 12px 0 0;
+        color: var(--muted);
+      }
+
+      @media (max-width: 720px) {
+        .shell {
+          width: min(100% - 20px, 680px);
+          padding-top: 16px;
+        }
+
+        .token-bar,
+        .layout,
+        .search {
+          grid-template-columns: 1fr;
+        }
+
+        .token-bar {
+          position: static;
+        }
+
+        .image-item {
+          grid-template-columns: 72px 1fr;
+        }
+
+        .copy-row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <h1>Image Hosting</h1>
+        <p>为 AI 发布文章快速生成公开图片 URL。页面本身公开访问，上传、列表、编辑、替换、删除都需要 MCP_TOKEN。</p>
+      </section>
+
+      <section class="token-bar" aria-label="Token 设置">
+        <input id="token-input" type="password" autocomplete="off" placeholder="粘贴 MCP_TOKEN，仅保存在 sessionStorage" />
+        <button id="save-token" type="button">保存 Token</button>
+        <button id="clear-token" class="ghost" type="button">清除</button>
+        <div id="token-status" class="status">需要 MCP_TOKEN 才能管理图片</div>
+      </section>
+
+      <section class="layout">
+        <div>
+          <section class="card">
+            <h2>上传图片</h2>
+            <div id="dropzone" class="dropzone" role="button" tabindex="0">
+              <strong id="drop-title">选择图片或拖拽到这里</strong>
+              <span>PNG / JPEG / WEBP / GIF / BMP，默认最大 10MB</span>
+              <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden />
+            </div>
+            <div id="preview" class="preview">
+              <img id="preview-img" alt="" />
+              <div>
+                <strong id="preview-name"></strong>
+                <div id="preview-size" class="muted"></div>
+              </div>
+            </div>
+            <div class="form-stack">
+              <input id="alt-input" placeholder="图片替代文本，用于文章可访问性" maxlength="200" />
+              <textarea id="description-input" placeholder="内部备注，例如文章标题、用途或来源" maxlength="1000"></textarea>
+              <button id="upload-btn" type="button" disabled>上传图片</button>
+              <div id="upload-status" class="status"></div>
+            </div>
+          </section>
+
+          <section id="result" class="card result">
+            <h2>最近结果</h2>
+            <img id="result-preview" class="thumb" alt="" />
+            <div class="copy-row"><code id="result-markdown"></code><button data-copy="markdown" type="button">复制 Markdown</button></div>
+            <div class="copy-row"><code id="result-url"></code><button data-copy="url" class="ghost" type="button">复制 URL</button></div>
+            <div class="copy-row"><code id="result-html"></code><button data-copy="html" class="ghost" type="button">复制 HTML</button></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <h2>管理列表</h2>
+          <div class="search">
+            <input id="search-input" placeholder="搜索 ID、文件名、alt、备注" />
+            <button id="load-list" type="button" disabled>加载列表</button>
+          </div>
+          <div id="list-status" class="status"></div>
+          <div id="image-list" class="image-list"></div>
+          <button id="load-more" class="ghost" type="button" style="display: none; margin-top: 14px">加载更多</button>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const state = {
+        token: sessionStorage.getItem("solin_image_token") || "",
+        selectedFile: null,
+        previewUrl: "",
+        images: [],
+        limit: 50,
+        offset: 0,
+        total: 0,
+        lastUpload: null,
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const tokenInput = $("token-input");
+      const tokenStatus = $("token-status");
+      const fileInput = $("file-input");
+      const dropzone = $("dropzone");
+      const uploadBtn = $("upload-btn");
+      const loadListBtn = $("load-list");
+      const loadMoreBtn = $("load-more");
+      const list = $("image-list");
+
+      function setStatus(el, message, type = "") {
+        el.className = `status ${type}`.trim();
+        el.textContent = message;
+      }
+
+      function hasToken() {
+        return state.token.trim().length > 0;
+      }
+
+      function refreshTokenState() {
+        tokenInput.value = state.token ? "••••••••••••••••" : "";
+        uploadBtn.disabled = !hasToken() || !state.selectedFile;
+        loadListBtn.disabled = !hasToken();
+        setStatus(tokenStatus, hasToken() ? "Token 已就绪" : "需要 MCP_TOKEN 才能管理图片", hasToken() ? "ok" : "");
+      }
+
+      function authHeaders() {
+        return { Authorization: `Bearer ${state.token}` };
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+      }
+
+      function formatTime(seconds) {
+        return new Date(seconds * 1000).toLocaleString();
+      }
+
+      function pickFile(file) {
+        if (!file) return;
+        state.selectedFile = file;
+        if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+        state.previewUrl = URL.createObjectURL(file);
+        $("preview-img").src = state.previewUrl;
+        $("preview-name").textContent = file.name;
+        $("preview-size").textContent = formatBytes(file.size);
+        $("preview").style.display = "flex";
+        $("drop-title").textContent = "已选择图片";
+        uploadBtn.textContent = "上传并生成 URL";
+        uploadBtn.disabled = !hasToken();
+      }
+
+      async function parseApiResponse(response) {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload || payload.success === false) {
+          const message = payload?.error?.message || `${response.status} ${response.statusText}`;
+          const code = payload?.error?.code || "request_failed";
+          throw new Error(`${code}: ${message}`);
+        }
+        return payload.data;
+      }
+
+      async function uploadImage() {
+        if (!state.selectedFile || !hasToken()) return;
+        setStatus($("upload-status"), `正在上传 ${state.selectedFile.name}...`);
+        uploadBtn.disabled = true;
+        const form = new FormData();
+        form.append("file", state.selectedFile);
+        form.append("alt", $("alt-input").value.trim());
+        form.append("description", $("description-input").value.trim());
+        try {
+          const response = await fetch("/api/images", {
+            method: "POST",
+            headers: authHeaders(),
+            body: form,
+          });
+          const data = await parseApiResponse(response);
+          state.lastUpload = data.meta;
+          renderResult(data.meta);
+          state.images = [data.meta, ...state.images.filter((item) => item.image_id !== data.meta.image_id)];
+          renderList();
+          setStatus($("upload-status"), "上传成功，优先复制 Markdown 用于文章", "ok");
+        } catch (err) {
+          setStatus($("upload-status"), err.message, "err");
+        } finally {
+          uploadBtn.disabled = !hasToken() || !state.selectedFile;
+        }
+      }
+
+      function formats(meta) {
+        const alt = meta.alt || "";
+        return {
+          url: meta.url,
+          markdown: `![${alt}](${meta.url})`,
+          html: `<img src="${meta.url}" alt="${alt.replaceAll('"', '&quot;')}">`,
+        };
+      }
+
+      function renderResult(meta) {
+        const f = formats(meta);
+        $("result").style.display = "block";
+        $("result-preview").src = meta.url;
+        $("result-preview").alt = meta.alt || "";
+        $("result-markdown").textContent = f.markdown;
+        $("result-url").textContent = f.url;
+        $("result-html").textContent = f.html;
+      }
+
+      async function copyText(text, button) {
+        await navigator.clipboard.writeText(text);
+        const old = button.textContent;
+        button.textContent = "已复制";
+        setTimeout(() => (button.textContent = old), 1200);
+      }
+
+      async function loadImages(reset = true) {
+        if (!hasToken()) return;
+        if (reset) {
+          state.offset = 0;
+          state.images = [];
+        }
+        setStatus($("list-status"), "正在加载图片列表...");
+        const params = new URLSearchParams({ limit: String(state.limit), offset: String(state.offset) });
+        const q = $("search-input").value.trim();
+        if (q) params.set("q", q);
+        try {
+          const response = await fetch(`/api/images?${params}`, { headers: authHeaders() });
+          const data = await parseApiResponse(response);
+          state.total = data.total;
+          state.offset += data.items.length;
+          state.images = reset ? data.items : [...state.images, ...data.items];
+          renderList();
+          setStatus($("list-status"), state.images.length ? `已加载 ${state.images.length}/${state.total} 张图片` : "还没有图片，先上传一张用于文章发布", state.images.length ? "ok" : "");
+          loadMoreBtn.style.display = state.images.length < state.total ? "inline-block" : "none";
+          loadMoreBtn.textContent = state.images.length < state.total ? "加载更多" : "已显示全部图片";
+        } catch (err) {
+          setStatus($("list-status"), err.message, "err");
+          if (err.message.includes("unauthorized")) refreshTokenState();
+        }
+      }
+
+      function renderList() {
+        list.textContent = "";
+        for (const meta of state.images) {
+          const item = document.createElement("article");
+          item.className = "image-item";
+          item.dataset.imageId = meta.image_id;
+
+          const img = document.createElement("img");
+          img.className = "thumb";
+          img.src = meta.url;
+          img.alt = meta.alt || "";
+          item.appendChild(img);
+
+          const body = document.createElement("div");
+          const title = document.createElement("p");
+          title.className = "item-title";
+          title.textContent = meta.alt || meta.filename;
+          body.appendChild(title);
+          const detail = document.createElement("p");
+          detail.className = "item-meta";
+          detail.textContent = `${meta.width}×${meta.height} · ${formatBytes(meta.size_bytes)} · ${formatTime(meta.created_at)}`;
+          body.appendChild(detail);
+          if (meta.description) {
+            const desc = document.createElement("p");
+            desc.className = "item-meta";
+            desc.textContent = meta.description;
+            body.appendChild(desc);
+          }
+
+          const actions = document.createElement("div");
+          actions.className = "item-actions";
+          actions.append(actionButton("复制 Markdown", (button) => copyText(formats(meta).markdown, button)));
+          actions.append(actionButton("复制 URL", (button) => copyText(meta.url, button), "ghost"));
+          actions.append(actionButton("编辑描述", () => toggleEdit(item), "ghost"));
+          actions.append(actionButton("替换图片", () => item.querySelector(".replace-input").click(), "ghost"));
+          actions.append(actionButton("删除图片", () => askDelete(meta.image_id), "danger"));
+          body.appendChild(actions);
+          item.appendChild(body);
+
+          const edit = renderEditBox(meta);
+          item.appendChild(edit);
+          list.appendChild(item);
+        }
+      }
+
+      function actionButton(text, onClick, cls = "") {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = text;
+        if (cls) button.className = cls;
+        button.addEventListener("click", () => onClick(button));
+        return button;
+      }
+
+      function renderEditBox(meta) {
+        const box = document.createElement("div");
+        box.className = "edit-box";
+        const alt = document.createElement("input");
+        alt.value = meta.alt || "";
+        alt.placeholder = "alt";
+        alt.maxLength = 200;
+        const desc = document.createElement("textarea");
+        desc.value = meta.description || "";
+        desc.placeholder = "description";
+        desc.maxLength = 1000;
+        const save = actionButton("保存描述", () => saveMeta(meta.image_id, alt.value, desc.value));
+        const replace = document.createElement("input");
+        replace.type = "file";
+        replace.accept = "image/png,image/jpeg,image/webp,image/gif,image/bmp";
+        replace.className = "replace-input";
+        replace.addEventListener("change", () => replaceImage(meta.image_id, replace.files[0], alt.value, desc.value));
+        box.append(alt, desc, save, replace);
+        return box;
+      }
+
+      function toggleEdit(item) {
+        const box = item.querySelector(".edit-box");
+        box.style.display = box.style.display === "grid" ? "none" : "grid";
+      }
+
+      async function saveMeta(imageId, alt, description) {
+        setStatus($("list-status"), `正在保存 ${imageId}...`);
+        try {
+          const response = await fetch(`/api/images/${imageId}`, {
+            method: "PATCH",
+            headers: { ...authHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ alt, description }),
+          });
+          const meta = await parseApiResponse(response);
+          state.images = state.images.map((item) => (item.image_id === imageId ? meta : item));
+          renderList();
+          setStatus($("list-status"), "描述已保存", "ok");
+        } catch (err) {
+          setStatus($("list-status"), err.message, "err");
+        }
+      }
+
+      async function replaceImage(imageId, file, alt, description) {
+        if (!file) return;
+        setStatus($("list-status"), `正在替换 ${imageId}，旧 filename URL 将失效...`);
+        const form = new FormData();
+        form.append("file", file);
+        form.append("alt", alt);
+        form.append("description", description);
+        try {
+          const response = await fetch(`/api/images/${imageId}`, {
+            method: "PUT",
+            headers: authHeaders(),
+            body: form,
+          });
+          const meta = await parseApiResponse(response);
+          state.images = state.images.map((item) => (item.image_id === imageId ? meta : item));
+          renderResult(meta);
+          renderList();
+          setStatus($("list-status"), "替换成功，请复制新的公开 URL", "ok");
+        } catch (err) {
+          setStatus($("list-status"), err.message, "err");
+        }
+      }
+
+      function askDelete(imageId) {
+        const item = list.querySelector(`[data-image-id="${imageId}"]`);
+        if (!item) return;
+        let notice = item.querySelector(".delete-notice");
+        if (!notice) {
+          notice = document.createElement("div");
+          notice.className = "delete-notice notice";
+          notice.textContent = `确认删除 ${imageId}？删除后公开 URL 会立即失效。`;
+          const confirm = actionButton("确认删除", () => deleteImage(imageId), "danger");
+          const cancel = actionButton("取消", () => notice.remove(), "ghost");
+          notice.append(" ", confirm, " ", cancel);
+          item.appendChild(notice);
+        }
+      }
+
+      async function deleteImage(imageId) {
+        setStatus($("list-status"), `正在删除 ${imageId}...`);
+        try {
+          const response = await fetch(`/api/images/${imageId}`, { method: "DELETE", headers: authHeaders() });
+          await parseApiResponse(response);
+          state.images = state.images.filter((item) => item.image_id !== imageId);
+          renderList();
+          setStatus($("list-status"), "图片已删除", "ok");
+        } catch (err) {
+          if (err.message.includes("image_not_found")) {
+            state.images = state.images.filter((item) => item.image_id !== imageId);
+            renderList();
+          }
+          setStatus($("list-status"), err.message, "err");
+        }
+      }
+
+      $("save-token").addEventListener("click", () => {
+        const raw = tokenInput.value.trim();
+        if (raw && !raw.includes("•")) state.token = raw;
+        if (state.token) sessionStorage.setItem("solin_image_token", state.token);
+        refreshTokenState();
+      });
+      $("clear-token").addEventListener("click", () => {
+        state.token = "";
+        sessionStorage.removeItem("solin_image_token");
+        refreshTokenState();
+      });
+      tokenInput.addEventListener("focus", () => {
+        if (state.token) tokenInput.value = "";
+      });
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") fileInput.click();
+      });
+      dropzone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropzone.classList.add("drag");
+        $("drop-title").textContent = "松开以上传图片";
+      });
+      dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("drag");
+        $("drop-title").textContent = state.selectedFile ? "已选择图片" : "选择图片或拖拽到这里";
+      });
+      dropzone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropzone.classList.remove("drag");
+        pickFile(event.dataTransfer.files[0]);
+      });
+      fileInput.addEventListener("change", () => pickFile(fileInput.files[0]));
+      uploadBtn.addEventListener("click", uploadImage);
+      loadListBtn.addEventListener("click", () => loadImages(true));
+      loadMoreBtn.addEventListener("click", () => loadImages(false));
+      $("search-input").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") loadImages(true);
+      });
+      document.querySelectorAll("[data-copy]").forEach((button) => {
+        button.addEventListener("click", () => copyText(formats(state.lastUpload)[button.dataset.copy], button));
+      });
+
+      refreshTokenState();
+    </script>
+  </body>
+</html>

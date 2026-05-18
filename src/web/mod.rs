@@ -4,11 +4,17 @@
 
 pub mod config;
 pub mod handlers;
+pub mod image_handlers;
 
 pub use config::{generate_mcp_token, resolve_base_url};
 pub use handlers::{
     index_handler, log_request, page_handler, public_asset_handler, sitemap_handler,
     token_generator_handler,
+};
+pub use image_handlers::{
+    ImageWebState, delete_image_handler, get_image_handler, image_asset_handler,
+    image_auth_middleware, image_page_handler, list_images_handler, replace_image_handler,
+    update_image_handler, upload_image_handler,
 };
 
 // 重新导出原有的 web 功能
