@@ -24,6 +24,9 @@ deploy:
 undeploy:
     @bash -lc 'bash just/undeploy-macos.sh'
 
+redeploy:
+    @bash -lc 'bash just/redeploy-macos.sh'
+
 status:
     @bash -lc 'bash just/status-macos.sh'
 
