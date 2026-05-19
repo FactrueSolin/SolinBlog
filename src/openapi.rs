@@ -69,13 +69,13 @@ pub fn build_openapi_json() -> serde_json::Value {
                             "content": {
                                 "application/json": {
                                     "schema": {
-                                        "$ref": "#/components/schemas/ListImagesResponse"
+                                        "$ref": "#/components/schemas/ListImagesApiResponse"
                                     }
                                 }
                             }
                         },
                         "401": {
-                            "description": "未授权"
+                            "$ref": "#/components/responses/ApiError"
                         }
                     },
                     "security": [{"bearer_auth": []}]
@@ -119,22 +119,22 @@ pub fn build_openapi_json() -> serde_json::Value {
                             "content": {
                                 "application/json": {
                                     "schema": {
-                                        "$ref": "#/components/schemas/UploadImageResponse"
+                                        "$ref": "#/components/schemas/UploadImageApiResponse"
                                     }
                                 }
                             }
                         },
                         "400": {
-                            "description": "请求参数错误"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "401": {
-                            "description": "未授权"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "413": {
-                            "description": "文件过大"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "415": {
-                            "description": "不支持的图片格式"
+                            "$ref": "#/components/responses/ApiError"
                         }
                     },
                     "security": [{"bearer_auth": []}]
@@ -161,16 +161,16 @@ pub fn build_openapi_json() -> serde_json::Value {
                             "content": {
                                 "application/json": {
                                     "schema": {
-                                        "$ref": "#/components/schemas/ImageMeta"
+                                        "$ref": "#/components/schemas/ImageMetaApiResponse"
                                     }
                                 }
                             }
                         },
                         "401": {
-                            "description": "未授权"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "404": {
-                            "description": "图片不存在"
+                            "$ref": "#/components/responses/ApiError"
                         }
                     },
                     "security": [{"bearer_auth": []}]
@@ -206,19 +206,19 @@ pub fn build_openapi_json() -> serde_json::Value {
                             "content": {
                                 "application/json": {
                                     "schema": {
-                                        "$ref": "#/components/schemas/ImageMeta"
+                                        "$ref": "#/components/schemas/ImageMetaApiResponse"
                                     }
                                 }
                             }
                         },
                         "400": {
-                            "description": "请求参数错误"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "401": {
-                            "description": "未授权"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "404": {
-                            "description": "图片不存在"
+                            "$ref": "#/components/responses/ApiError"
                         }
                     },
                     "security": [{"bearer_auth": []}]
@@ -272,19 +272,19 @@ pub fn build_openapi_json() -> serde_json::Value {
                             "content": {
                                 "application/json": {
                                     "schema": {
-                                        "$ref": "#/components/schemas/ImageMeta"
+                                        "$ref": "#/components/schemas/ImageMetaApiResponse"
                                     }
                                 }
                             }
                         },
                         "400": {
-                            "description": "请求参数错误"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "401": {
-                            "description": "未授权"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "404": {
-                            "description": "图片不存在"
+                            "$ref": "#/components/responses/ApiError"
                         }
                     },
                     "security": [{"bearer_auth": []}]
@@ -309,16 +309,16 @@ pub fn build_openapi_json() -> serde_json::Value {
                             "content": {
                                 "application/json": {
                                     "schema": {
-                                        "$ref": "#/components/schemas/DeleteImageResponse"
+                                        "$ref": "#/components/schemas/DeleteImageApiResponse"
                                     }
                                 }
                             }
                         },
                         "401": {
-                            "description": "未授权"
+                            "$ref": "#/components/responses/ApiError"
                         },
                         "404": {
-                            "description": "图片不存在"
+                            "$ref": "#/components/responses/ApiError"
                         }
                     },
                     "security": [{"bearer_auth": []}]
@@ -371,7 +371,119 @@ pub fn build_openapi_json() -> serde_json::Value {
             }
         },
         "components": {
+            "responses": {
+                "ApiError": {
+                    "description": "请求失败",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImageApiErrorResponse"
+                            }
+                        }
+                    }
+                }
+            },
             "schemas": {
+                "ImageApiErrorBody": {
+                    "type": "object",
+                    "description": "图床 API 错误信息",
+                    "required": ["code", "message"],
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": "错误代码"
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "错误消息"
+                        }
+                    }
+                },
+                "ImageApiErrorResponse": {
+                    "type": "object",
+                    "description": "图床 API 失败响应",
+                    "required": ["success", "data", "error"],
+                    "properties": {
+                        "success": {
+                            "type": "boolean",
+                            "const": false
+                        },
+                        "data": {
+                            "type": "null"
+                        },
+                        "error": {
+                            "$ref": "#/components/schemas/ImageApiErrorBody"
+                        }
+                    }
+                },
+                "UploadImageApiResponse": {
+                    "type": "object",
+                    "description": "图床 API 上传成功响应",
+                    "required": ["success", "data", "error"],
+                    "properties": {
+                        "success": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "data": {
+                            "$ref": "#/components/schemas/UploadImageResponse"
+                        },
+                        "error": {
+                            "type": "null"
+                        }
+                    }
+                },
+                "ListImagesApiResponse": {
+                    "type": "object",
+                    "description": "图床 API 图片列表成功响应",
+                    "required": ["success", "data", "error"],
+                    "properties": {
+                        "success": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "data": {
+                            "$ref": "#/components/schemas/ListImagesResponse"
+                        },
+                        "error": {
+                            "type": "null"
+                        }
+                    }
+                },
+                "ImageMetaApiResponse": {
+                    "type": "object",
+                    "description": "图床 API 图片元信息成功响应",
+                    "required": ["success", "data", "error"],
+                    "properties": {
+                        "success": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "data": {
+                            "$ref": "#/components/schemas/ImageMeta"
+                        },
+                        "error": {
+                            "type": "null"
+                        }
+                    }
+                },
+                "DeleteImageApiResponse": {
+                    "type": "object",
+                    "description": "图床 API 删除成功响应",
+                    "required": ["success", "data", "error"],
+                    "properties": {
+                        "success": {
+                            "type": "boolean",
+                            "const": true
+                        },
+                        "data": {
+                            "$ref": "#/components/schemas/DeleteImageResponse"
+                        },
+                        "error": {
+                            "type": "null"
+                        }
+                    }
+                },
                 "ImageMeta": {
                     "type": "object",
                     "description": "图片元信息",
