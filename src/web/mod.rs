@@ -21,7 +21,7 @@ pub use image_handlers::{
 pub use crate::web_core::{
     build_page_url, inject_seo_meta, inject_umami_script, markdown_to_html,
     parse_page_id_from_slug, render_404_html, render_index_html, render_markdown_page,
-    render_markdown_page_with_id, render_page_html, render_sitemap_xml,
+    render_page_html, render_sitemap_xml,
 };
 
 // validate_html 在 store 模块中

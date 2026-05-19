@@ -70,11 +70,6 @@
         animation: pageBackgroundSettle 1s ease-out both;
       }
 
-      body.is-card-transitioning > *:not(.card-transition-clone) {
-        opacity: 0;
-        transition: opacity 0.24s ease;
-      }
-
       main.container {
         max-width: 880px;
         margin: 0 auto 48px;
@@ -117,33 +112,6 @@
       .card:hover {
         transform: translateY(-3px);
         box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
-      }
-
-      .card.is-transition-source {
-        opacity: 0;
-      }
-
-      .card-transition-clone {
-        position: fixed;
-        z-index: 9999;
-        overflow: hidden;
-        pointer-events: none;
-        background: var(--card-bg);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
-        backdrop-filter: blur(6px);
-        transition:
-          top 0.46s cubic-bezier(0.22, 1, 0.36, 1),
-          left 0.46s cubic-bezier(0.22, 1, 0.36, 1),
-          width 0.46s cubic-bezier(0.22, 1, 0.36, 1),
-          height 0.46s cubic-bezier(0.22, 1, 0.36, 1),
-          border-radius 0.46s cubic-bezier(0.22, 1, 0.36, 1),
-          opacity 0.22s ease;
-      }
-
-      .card-transition-clone .actions {
-        opacity: 0;
       }
 
       .card.is-filtered {
@@ -314,8 +282,6 @@
     <script>
       const searchInput = document.getElementById('search-input');
       const cards = Array.from(document.querySelectorAll('.card-list .card'));
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const transitionKey = 'solin_article_transition';
 
       const normalize = (value) => (value || '').toLowerCase();
 
@@ -342,80 +308,6 @@
       };
 
       searchInput?.addEventListener('input', applySearch);
-
-      const getTargetRect = () => ({
-        top: 48,
-        left: Math.max(24, (window.innerWidth - 880) / 2),
-        width: Math.min(880, window.innerWidth - 48),
-        height: Math.max(320, window.innerHeight - 112),
-      });
-
-      const storeTransition = (card, rect) => {
-        try {
-          sessionStorage.setItem(transitionKey, JSON.stringify({
-            pageId: card.dataset.pageId || '',
-            title: card.dataset.title || '',
-            description: card.dataset.description || '',
-            keywords: card.dataset.keywords || '',
-            rect,
-            createdAt: Date.now(),
-          }));
-        } catch (_err) {
-          // Session storage may be unavailable in private or restricted contexts.
-        }
-      };
-
-      const animateCardExit = (event) => {
-        const link = event.target.closest('a[href]');
-        const card = link?.closest('.card');
-        if (!link || !card || reduceMotion || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-          return;
-        }
-
-        const url = new URL(link.href, window.location.href);
-        if (url.origin !== window.location.origin || !url.pathname.startsWith('/pages/')) {
-          return;
-        }
-
-        event.preventDefault();
-        const rect = card.getBoundingClientRect();
-        storeTransition(card, {
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-        });
-
-        const clone = card.cloneNode(true);
-        clone.className = 'card-transition-clone';
-        Object.assign(clone.style, {
-          top: `${rect.top}px`,
-          left: `${rect.left}px`,
-          width: `${rect.width}px`,
-          height: `${rect.height}px`,
-        });
-
-        document.body.appendChild(clone);
-        document.body.classList.add('is-card-transitioning');
-        card.classList.add('is-transition-source');
-
-        requestAnimationFrame(() => {
-          const target = getTargetRect();
-          Object.assign(clone.style, {
-            top: `${target.top}px`,
-            left: `${target.left}px`,
-            width: `${target.width}px`,
-            height: `${target.height}px`,
-            borderRadius: '14px',
-          });
-        });
-
-        setTimeout(() => {
-          window.location.href = link.href;
-        }, 430);
-      };
-
-      document.querySelector('.card-list')?.addEventListener('click', animateCardExit);
     </script>
   </body>
 </html>
