@@ -193,5 +193,255 @@
     "mtime": 1779122282.4691556,
     "ast_hash": "0ef86720db8f77a33353a0d04c5cac01",
     "semantic_hash": "0ef86720db8f77a33353a0d04c5cac01"
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\build.rs": {
+    "mtime": 1779169982.843358,
+    "ast_hash": "6235a2c583d4d11ae5df89a505fe3b2d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\build-release.sh": {
+    "mtime": 1779169982.861067,
+    "ast_hash": "7b38271b000c40b370b27998f3ddd779",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\check.sh": {
+    "mtime": 1779169982.861067,
+    "ast_hash": "d2f3c7291f21d3c514ddba84e8fd39ce",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\deploy-macos.sh": {
+    "mtime": 1779169982.8617346,
+    "ast_hash": "7b3ba811b70524c969416b178e3c2d29",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\logs-macos.sh": {
+    "mtime": 1779169982.8625667,
+    "ast_hash": "392eb327843d885c18499fd2be98f29a",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\run.sh": {
+    "mtime": 1779169982.8625667,
+    "ast_hash": "7443213ce54eeb6e92a90b8b4ba73175",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\status-macos.sh": {
+    "mtime": 1779169982.8625667,
+    "ast_hash": "f5ed4367ace74bbd18dca29448f2c427",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\undeploy-macos.sh": {
+    "mtime": 1779169982.8625667,
+    "ast_hash": "671b3d6e5fcf0ee4642a03d4082abe3f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\image.rs": {
+    "mtime": 1779169982.8912861,
+    "ast_hash": "bf5351bc13d8a32139eb708087b27878",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\image_host.rs": {
+    "mtime": 1779169982.891786,
+    "ast_hash": "df59ed0aad77ef03126cbdc146234bdc",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\lib.rs": {
+    "mtime": 1779169982.891786,
+    "ast_hash": "be7c767ca5e16fbb1dfb70334a053796",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\openapi.rs": {
+    "mtime": 1779169982.8939366,
+    "ast_hash": "08905422d271ecee52b9027628745555",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\store.rs": {
+    "mtime": 1779169982.8944366,
+    "ast_hash": "00f654360f4c1e7850c6f02e42b5c3b2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\web_core.rs": {
+    "mtime": 1779169982.8959396,
+    "ast_hash": "db9d39f20273c27e0935f12013b24097",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\bin\\server.rs": {
+    "mtime": 1779169982.8907862,
+    "ast_hash": "d0b2ef4b5ad9d34c8f7a4f4098f54193",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\bin\\store_selfcheck.rs": {
+    "mtime": 1779169982.8912861,
+    "ast_hash": "a778a0345322394fb215966b29fdb983",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\mcp\\auth.rs": {
+    "mtime": 1779169982.892286,
+    "ast_hash": "c340d1432f3e096d013ea7f600a88a1b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\mcp\\dto.rs": {
+    "mtime": 1779169982.892286,
+    "ast_hash": "7f21ced296b6d22ca0b41714ec9c0e59",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\mcp\\mod.rs": {
+    "mtime": 1779169982.892286,
+    "ast_hash": "8f56af7e97802e4be8d30abffaf64a2f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\mcp\\tools.rs": {
+    "mtime": 1779169982.892286,
+    "ast_hash": "261eba9bbecdeba170555b4059734fb6",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\mcp\\utils.rs": {
+    "mtime": 1779169982.8934324,
+    "ast_hash": "3a8091453c814ee766a0651942b00b1b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\web\\config.rs": {
+    "mtime": 1779169982.894937,
+    "ast_hash": "9fbd7e41de4057e27cdbc8da87b68700",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\web\\handlers.rs": {
+    "mtime": 1779169982.8954377,
+    "ast_hash": "ab17d7611ff38f6e6423eacd1a43dbda",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\web\\image_handlers.rs": {
+    "mtime": 1779169982.8959396,
+    "ast_hash": "8a2f911d2e24f301397f5041cfc8a485",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\src\\web\\mod.rs": {
+    "mtime": 1779169982.8959396,
+    "ast_hash": "731789a11f98c6e1bc01801ba19eeba9",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\tests\\image_api_all.sh": {
+    "mtime": 1779169982.896943,
+    "ast_hash": "e4675c34a455a959e90e3813fe570ced",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\tests\\image_api_auth_test.sh": {
+    "mtime": 1779169982.896943,
+    "ast_hash": "07607bbc22bf23c3600ecfa9bd01203f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\tests\\image_api_common.sh": {
+    "mtime": 1779169982.896943,
+    "ast_hash": "8cf04a2704646ad6b3069151f79ebe1c",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\tests\\image_api_metadata_test.sh": {
+    "mtime": 1779169982.8974485,
+    "ast_hash": "3fb31a85aad07ef1d848421149ac61a1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\tests\\image_api_replace_delete_test.sh": {
+    "mtime": 1779169982.8974485,
+    "ast_hash": "4cc2941b0cc82fab201027a8b4e4d52c",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\tests\\image_api_upload_public_test.sh": {
+    "mtime": 1779169982.8974485,
+    "ast_hash": "7353b4da0de10a2e4eb0ba6fe1ae3e58",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\AGENTS.md": {
+    "mtime": 1779169982.8418515,
+    "ast_hash": "c644f0638577878ede88ce9268705703",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\docker-compose.yml": {
+    "mtime": 1779169982.844367,
+    "ast_hash": "78b89f22f1300f9b031559b5145919cc",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\DOCKER.md": {
+    "mtime": 1779169982.8428545,
+    "ast_hash": "d5c03555a48baf11ebf6b1b682fb346d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\README.md": {
+    "mtime": 1779169982.843358,
+    "ast_hash": "31c0fe2c53b3f08e69094c1e826930b4",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\TEST.md": {
+    "mtime": 1779169982.843358,
+    "ast_hash": "29c0868340371ca7a58f5bfa5892096e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\\u529f\u80fd\u6811.md": {
+    "mtime": 1779169982.8974485,
+    "ast_hash": "5d5d29c017b43bfdd63d1474f96df260",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\docs\\image-hosting-architecture.md": {
+    "mtime": 1779169982.844876,
+    "ast_hash": "83beb188d32092d7c41d9b7899e17cc5",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\front\\404.html": {
+    "mtime": 1779169982.8453736,
+    "ast_hash": "0fb315e3be1a096db5d3e625d3bcc00e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\front\\header.html": {
+    "mtime": 1779169982.8465133,
+    "ast_hash": "091fbcfdbf879f6f2a8f205350356c0f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\front\\image.html": {
+    "mtime": 1779169982.847018,
+    "ast_hash": "a7974d265fdeb1296cdf1d7fc403641a",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\front\\index.html": {
+    "mtime": 1779169982.847018,
+    "ast_hash": "772572c6578b4a77bfe24a0be6526483",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\front\\markdown.html": {
+    "mtime": 1779169982.847018,
+    "ast_hash": "fead220425dcd55eb800981c7a217a4c",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\front\\README.md": {
+    "mtime": 1779169982.8453736,
+    "ast_hash": "166e74495a72ecb01dafb88fd340ebaa",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\just\\just.md": {
+    "mtime": 1779169982.8620675,
+    "ast_hash": "3ca780e7046e31001ffa89fae0b9c924",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\public\\README.md": {
+    "mtime": 1779169982.8635705,
+    "ast_hash": "4831efdca5472b34d64438671156a9bd",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\public\\prompt\\README.md": {
+    "mtime": 1779169982.8902862,
+    "ast_hash": "bcce93bfa740398f05e098ad0f3ab6b0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\public\\icon.png": {
+    "mtime": 1779169982.8650753,
+    "ast_hash": "10b20e5a0eb57d52fdb935adb85b9eb2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\public\\light0.png": {
+    "mtime": 1779169982.8787642,
+    "ast_hash": "09b0efa6de2a5af48f73fe1fb606c149",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\Daifuku\\multica_workspaces_desktop-api.multica.ai\\005d48bc-f4b7-4e91-8a6c-65f8d8e8f267\\60eb62ea\\workdir\\SolinBlog\\public\\night0.png": {
+    "mtime": 1779169982.8887863,
+    "ast_hash": "0ef86720db8f77a33353a0d04c5cac01",
+    "semantic_hash": ""
   }
 }
