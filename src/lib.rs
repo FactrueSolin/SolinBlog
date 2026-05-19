@@ -11,10 +11,10 @@
 //! - [`image`] - 图片搜索功能
 //! - [`image_host`] - 图床托管功能
 
-pub mod store;
-pub mod web_core;
-pub mod web;
-pub mod mcp;
 pub mod image;
 pub mod image_host;
+pub mod mcp;
 pub mod openapi;
+pub mod store;
+pub mod web;
+pub mod web_core;

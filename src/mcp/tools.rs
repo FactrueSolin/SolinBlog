@@ -5,7 +5,7 @@ use rmcp::{
     handler::server::{router::tool::ToolRouter, tool::Parameters, wrapper::Json},
     model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
 };
-use rmcp::{tool, tool_router, tool_handler};
+use rmcp::{tool, tool_handler, tool_router};
 
 // use crate::image::search_images;
 use crate::store::{PageMeta, PageStore};
@@ -187,7 +187,9 @@ impl BlogMcpServer {
         }))
     }
 
-    #[tool(description = "Get blog pages by page_id list (page_uid). Supports single page_id for backward compatibility")]
+    #[tool(
+        description = "Get blog pages by page_id list (page_uid). Supports single page_id for backward compatibility"
+    )]
     async fn get_page_by_id(
         &self,
         Parameters(params): Parameters<GetPageByIdRequest>,
@@ -499,8 +501,9 @@ impl BlogMcpServer {
     ) -> Result<Json<GetBlogStyleResponse>, String> {
         let style = &params.style;
         let content = match style {
-            BlogStyle::PplxStyle => std::fs::read_to_string("public/prompt/PPLX.xml")
-                .map_err(|err| err.to_string())?,
+            BlogStyle::PplxStyle => {
+                std::fs::read_to_string("public/prompt/PPLX.xml").map_err(|err| err.to_string())?
+            }
         };
         Ok(Json(GetBlogStyleResponse {
             success: true,
@@ -517,13 +520,14 @@ impl BlogMcpServer {
     ) -> Result<Json<GetHtmlStyleResponse>, String> {
         let style = &params.style;
         let template = match style {
-            HtmlStyleType::Default => std::fs::read_to_string("public/prompt/HTML.xml")
-                .map_err(|err| err.to_string())?,
+            HtmlStyleType::Default => {
+                std::fs::read_to_string("public/prompt/HTML.xml").map_err(|err| err.to_string())?
+            }
         };
-        let example_css = std::fs::read_to_string("front/example.css")
-            .map_err(|err| err.to_string())?;
-        let example_html = std::fs::read_to_string("front/index.html")
-            .map_err(|err| err.to_string())?;
+        let example_css =
+            std::fs::read_to_string("front/example.css").map_err(|err| err.to_string())?;
+        let example_html =
+            std::fs::read_to_string("front/index.html").map_err(|err| err.to_string())?;
         let content = template
             .replace("{{EXAMPLE_CSS}}", &example_css)
             .replace("{{EXAMPLE_HTML}}", &example_html);

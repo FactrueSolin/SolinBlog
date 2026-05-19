@@ -2,12 +2,7 @@
 //!
 //! 启动 Web 服务器和 MCP 接口
 
-use axum::{
-    extract::DefaultBodyLimit,
-    middleware,
-    routing::get,
-    Json, Router,
-};
+use axum::{Json, Router, extract::DefaultBodyLimit, middleware, routing::get};
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
@@ -15,13 +10,13 @@ use solin_blog::image_host::ImageStore;
 use solin_blog::mcp::{BlogMcpServer, TokenStore, mcp_auth_middleware};
 use solin_blog::openapi::build_openapi_json;
 use solin_blog::store::PageStore;
+use solin_blog::web::generate_token;
 use solin_blog::web::{
     ImageWebState, delete_image_handler, get_image_handler, image_asset_handler,
     image_auth_middleware, image_page_handler, index_handler, list_images_handler, page_handler,
     public_asset_handler, replace_image_handler, sitemap_handler, token_generator_handler,
     update_image_handler, upload_image_handler,
 };
-use solin_blog::web::generate_token;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
@@ -31,9 +26,8 @@ async fn main() {
 
     // 初始化数据存储
     let store = Arc::new(PageStore::new("data"));
-    let image_store = Arc::new(
-        ImageStore::load_or_init("data/images").expect("initialize image hosting store"),
-    );
+    let image_store =
+        Arc::new(ImageStore::load_or_init("data/images").expect("initialize image hosting store"));
     let image_max_upload_mb = std::env::var("IMAGE_MAX_UPLOAD_MB")
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
@@ -61,7 +55,10 @@ async fn main() {
         }
     };
     if std::env::var("TOKEN").unwrap_or_default().trim().is_empty()
-        && std::env::var("MCP_TOKEN").unwrap_or_default().trim().is_empty()
+        && std::env::var("MCP_TOKEN")
+            .unwrap_or_default()
+            .trim()
+            .is_empty()
     {
         println!("[solin-blog] token generated: {token}");
     }
@@ -78,12 +75,13 @@ async fn main() {
     );
 
     // 创建受保护的 MCP 路由（需要认证）
-    let protected_mcp_router = Router::new()
-        .nest_service("/mcp", mcp_service)
-        .layer(middleware::from_fn_with_state(
-            token_store.clone(),
-            mcp_auth_middleware,
-        ));
+    let protected_mcp_router =
+        Router::new()
+            .nest_service("/mcp", mcp_service)
+            .layer(middleware::from_fn_with_state(
+                token_store.clone(),
+                mcp_auth_middleware,
+            ));
 
     let page_router = Router::new()
         .route("/", get(index_handler))
@@ -99,7 +97,10 @@ async fn main() {
         .with_state(image_state.clone());
 
     let protected_image_router = Router::new()
-        .route("/api/images", get(list_images_handler).post(upload_image_handler))
+        .route(
+            "/api/images",
+            get(list_images_handler).post(upload_image_handler),
+        )
         .route(
             "/api/images/{image_id}",
             get(get_image_handler)

@@ -189,7 +189,8 @@ impl ImageStore {
             ));
         }
 
-        let query = q.map(|value| value.trim().to_ascii_lowercase())
+        let query = q
+            .map(|value| value.trim().to_ascii_lowercase())
             .filter(|value| !value.is_empty());
         let guard = self.index.read().await;
         let mut items: Vec<ImageRecord> = guard.images.values().cloned().collect();
@@ -346,7 +347,10 @@ impl ImageStore {
     pub async fn delete_image(&self, image_id: &str) -> Result<(), ImageHostError> {
         let mut guard = self.index.write().await;
         let mut next = guard.clone();
-        let record = next.images.remove(image_id).ok_or(ImageHostError::NotFound)?;
+        let record = next
+            .images
+            .remove(image_id)
+            .ok_or(ImageHostError::NotFound)?;
         self.save_index(&next)?;
         *guard = next;
         let path = self.record_path(&record);
@@ -416,9 +420,14 @@ struct ImageFileInfo {
     sha256: String,
 }
 
-fn validate_image_bytes(bytes: &[u8], max_upload_bytes: usize) -> Result<ImageFileInfo, ImageHostError> {
+fn validate_image_bytes(
+    bytes: &[u8],
+    max_upload_bytes: usize,
+) -> Result<ImageFileInfo, ImageHostError> {
     if bytes.is_empty() {
-        return Err(ImageHostError::InvalidRequest("file is required".to_string()));
+        return Err(ImageHostError::InvalidRequest(
+            "file is required".to_string(),
+        ));
     }
     if bytes.len() > max_upload_bytes {
         return Err(ImageHostError::PayloadTooLarge);
@@ -438,9 +447,8 @@ fn validate_image_bytes(bytes: &[u8], max_upload_bytes: usize) -> Result<ImageFi
             ));
         }
     };
-    let decoded = ::image::load_from_memory_with_format(bytes, format).map_err(|_| {
-        ImageHostError::UnsupportedMediaType("image decode failed".to_string())
-    })?;
+    let decoded = ::image::load_from_memory_with_format(bytes, format)
+        .map_err(|_| ImageHostError::UnsupportedMediaType("image decode failed".to_string()))?;
     let mut hasher = Sha256::new();
     hasher.update(bytes);
     let sha256 = format!("{:x}", hasher.finalize());
@@ -492,12 +500,18 @@ fn generate_image_id() -> Result<String> {
 fn build_relative_path(timestamp: i64, filename: &str) -> String {
     let datetime = chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp, 0)
         .unwrap_or_else(|| chrono::DateTime::<chrono::Utc>::UNIX_EPOCH);
-    format!("files/{}/{:02}/{}", datetime.format("%Y"), datetime.month(), filename)
+    format!(
+        "files/{}/{:02}/{}",
+        datetime.format("%Y"),
+        datetime.month(),
+        filename
+    )
 }
 
 fn write_image_file(path: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("create image file dir {:?}", parent))?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("create image file dir {:?}", parent))?;
     }
     let tmp_path = path.with_extension("uploading");
     fs::write(&tmp_path, bytes).with_context(|| format!("write temp image {:?}", tmp_path))?;
