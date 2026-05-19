@@ -84,10 +84,6 @@
             animation: markdownPageIn 0.9s ease-out both;
         }
 
-        body.is-article-transitioning > *:not(.article-transition-clone) {
-            opacity: 0;
-        }
-
         .markdown-body {
             width: min(880px, calc(100% - 48px));
             max-width: 880px;
@@ -102,43 +98,6 @@
             box-shadow: var(--card-shadow);
             backdrop-filter: blur(6px);
             animation: articleRiseIn 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
-        }
-
-        .markdown-body.is-transition-target {
-            opacity: 0;
-            animation: none;
-        }
-
-        .article-transition-clone {
-            position: fixed;
-            z-index: 9999;
-            overflow: hidden;
-            pointer-events: none;
-            padding: 20px 24px;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
-            backdrop-filter: blur(6px);
-            line-height: 1.7;
-            transition:
-                top 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-                left 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-                width 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-                height 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-                border-radius 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-                opacity 0.22s ease;
-        }
-
-        .article-transition-clone h2 {
-            margin: 0;
-            font-size: 1.25rem;
-        }
-
-        .article-transition-clone .description,
-        .article-transition-clone .keywords {
-            margin-top: 12px;
-            color: var(--muted);
         }
 
         .markdown-body p {
@@ -451,7 +410,7 @@
         <div class="toc-title">目录</div>
         <ul class="toc-list" id="toc-list"></ul>
     </aside>
-    <main class="markdown-body" data-page-id="{{page_id}}">
+    <main class="markdown-body">
         {{markdown_html}}
     </main>
     <script>
@@ -494,75 +453,6 @@
                 li.appendChild(link);
                 tocList.appendChild(li);
             });
-        })();
-
-        (function () {
-            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const body = document.body;
-            const article = document.querySelector('.markdown-body');
-            const transitionKey = 'solin_article_transition';
-
-            if (!article || reduceMotion) {
-                return;
-            }
-
-            let state = null;
-            try {
-                state = JSON.parse(sessionStorage.getItem(transitionKey) || 'null');
-                sessionStorage.removeItem(transitionKey);
-            } catch (_err) {
-                state = null;
-            }
-
-            const expectedPageId = article.dataset.pageId || body.dataset.pageId || '';
-            if (!state?.rect || state.pageId !== expectedPageId || Date.now() - Number(state.createdAt || 0) > 8000) {
-                return;
-            }
-
-            const target = article.getBoundingClientRect();
-            const clone = document.createElement('div');
-            clone.className = 'article-transition-clone';
-            const title = document.createElement('h2');
-            title.textContent = state.title || '';
-            const description = document.createElement('p');
-            description.className = 'description';
-            description.textContent = state.description || '';
-            const keywords = document.createElement('div');
-            keywords.className = 'keywords';
-            const keywordsLabel = document.createElement('span');
-            keywordsLabel.textContent = '关键词：';
-            const keywordsValue = document.createElement('span');
-            keywordsValue.textContent = state.keywords || '无';
-            keywords.append(keywordsLabel, keywordsValue);
-            clone.append(title, description, keywords);
-            Object.assign(clone.style, {
-                top: `${state.rect.top}px`,
-                left: `${state.rect.left}px`,
-                width: `${state.rect.width}px`,
-                height: `${state.rect.height}px`,
-            });
-
-            article.classList.add('is-transition-target');
-            body.classList.add('is-article-transitioning');
-            body.appendChild(clone);
-
-            requestAnimationFrame(() => {
-                Object.assign(clone.style, {
-                    top: `${target.top}px`,
-                    left: `${target.left}px`,
-                    width: `${target.width}px`,
-                    height: `${Math.min(Math.max(target.height, 320), window.innerHeight - 96)}px`,
-                    borderRadius: '14px',
-                });
-            });
-
-            setTimeout(() => {
-                article.classList.remove('is-transition-target');
-                body.classList.remove('is-article-transitioning');
-                clone.style.opacity = '0';
-            }, 500);
-
-            setTimeout(() => clone.remove(), 720);
         })();
     </script>
 </body>
