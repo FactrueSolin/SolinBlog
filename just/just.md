@@ -90,3 +90,9 @@ just undeploy
 ```
 
 停止并移除当前用户的 LaunchAgent plist。不会删除项目文件、`.env`、`data/` 或已构建产物。
+
+```bash
+just redeploy
+```
+
+重新部署当前用户的 LaunchAgent，执行顺序固定为：先 `just undeploy` 停止并移除服务，再 `just deploy` 构建 `target/release/server` 并创建服务。
