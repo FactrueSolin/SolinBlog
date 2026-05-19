@@ -67,6 +67,7 @@
         letter-spacing: 0.018em;
         line-height: 1.7;
         transition: var(--transition);
+        animation: pageBackgroundSettle 1s ease-out both;
       }
 
       main.container {
@@ -81,6 +82,7 @@
       }
 
       .card {
+        opacity: 0;
         background: var(--card-bg);
         border-radius: 12px;
         padding: 20px 24px;
@@ -88,11 +90,34 @@
         box-shadow: var(--card-shadow);
         transition: var(--transition);
         backdrop-filter: blur(6px);
+        animation: cardRiseIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .card:nth-child(2) {
+        animation-delay: 0.06s;
+      }
+
+      .card:nth-child(3) {
+        animation-delay: 0.12s;
+      }
+
+      .card:nth-child(4) {
+        animation-delay: 0.18s;
+      }
+
+      .card:nth-child(n + 5) {
+        animation-delay: 0.24s;
       }
 
       .card:hover {
         transform: translateY(-3px);
         box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+      }
+
+      .card.is-filtered {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+        pointer-events: none;
       }
 
       .card-header {
@@ -191,6 +216,53 @@
         font-weight: 700;
         font-style: italic;
         letter-spacing: 0.05em;
+        animation: subtitleFadeIn 0.7s ease-out both;
+        animation-delay: 0.12s;
+      }
+
+      @keyframes pageBackgroundSettle {
+        from {
+          background-position: center -24px, center;
+        }
+
+        to {
+          background-position: center top, center;
+        }
+      }
+
+      @keyframes cardRiseIn {
+        from {
+          opacity: 0;
+          transform: translateY(22px) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes subtitleFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
       }
 
       @media (max-width: 640px) {
@@ -221,7 +293,17 @@
             card.dataset.description,
             card.dataset.keywords,
           ].join(' '));
-          card.style.display = query === '' || haystack.includes(query) ? '' : 'none';
+          const isVisible = query === '' || haystack.includes(query);
+          card.classList.toggle('is-filtered', !isVisible);
+          if (isVisible) {
+            card.style.display = '';
+          } else {
+            setTimeout(() => {
+              if (card.classList.contains('is-filtered')) {
+                card.style.display = 'none';
+              }
+            }, 220);
+          }
         });
       };
 
