@@ -17,3 +17,4 @@ pub mod web;
 pub mod mcp;
 pub mod image;
 pub mod image_host;
+pub mod openapi;

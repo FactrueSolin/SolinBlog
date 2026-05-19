@@ -6,13 +6,14 @@ use axum::{
     extract::DefaultBodyLimit,
     middleware,
     routing::get,
-    Router,
+    Json, Router,
 };
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
 use solin_blog::image_host::ImageStore;
 use solin_blog::mcp::{BlogMcpServer, TokenStore, mcp_auth_middleware};
+use solin_blog::openapi::build_openapi_json;
 use solin_blog::store::PageStore;
 use solin_blog::web::{
     ImageWebState, delete_image_handler, get_image_handler, image_asset_handler,
@@ -114,7 +115,9 @@ async fn main() {
         .with_state(image_state);
 
     // 创建主应用路由
+    let openapi_json = build_openapi_json();
     let app = Router::new()
+        .route("/openapi.json", get(|| async { Json(openapi_json) }))
         .merge(page_router)
         .merge(public_image_router)
         .merge(protected_image_router)
