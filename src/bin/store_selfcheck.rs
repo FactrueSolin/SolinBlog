@@ -1,10 +1,10 @@
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde_json::Map;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use solin_blog::store::{sanitize_page_id, PageMeta, PageStore, SeoMeta};
+use solin_blog::store::{PageMeta, PageStore, SeoMeta, sanitize_page_id};
 
 struct PageDirGuard {
     page_dir: PathBuf,
@@ -128,7 +128,10 @@ fn main() -> Result<()> {
     let (loaded_meta, loaded_html) = store.load_page(&page_id).context("load page")?;
     ensure!(loaded_meta.page_uid.len() == 16, "page uid len mismatch");
     ensure!(
-        loaded_meta.page_uid.chars().all(|ch| ch.is_ascii_alphanumeric()),
+        loaded_meta
+            .page_uid
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric()),
         "page uid charset mismatch"
     );
     ensure!(loaded_meta.created_at > 0, "created_at missing");
@@ -171,7 +174,10 @@ fn main() -> Result<()> {
         updated_meta.created_at == initial_created_at,
         "created_at changed"
     );
-    ensure!(updated_meta.updated_at >= initial_created_at, "updated_at invalid");
+    ensure!(
+        updated_meta.updated_at >= initial_created_at,
+        "updated_at invalid"
+    );
     ensure!(
         updated_meta.seo.seo_title == meta2.seo.seo_title,
         "updated title mismatch"
@@ -213,7 +219,10 @@ fn main() -> Result<()> {
 
     println!("delete page");
     store.delete_page(&page_id).context("delete page")?;
-    ensure!(!store.page_exists(&page_id)?, "page still exists after delete");
+    ensure!(
+        !store.page_exists(&page_id)?,
+        "page still exists after delete"
+    );
     println!("delete ok");
 
     println!("store selfcheck done");

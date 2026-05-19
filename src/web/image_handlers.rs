@@ -286,11 +286,7 @@ async fn read_multipart_image(
     let mut alt = None;
     let mut description = None;
 
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(multipart_error)?
-    {
+    while let Some(field) = multipart.next_field().await.map_err(multipart_error)? {
         let name = field.name().unwrap_or_default().to_string();
         match name.as_str() {
             "file" => {
@@ -315,7 +311,8 @@ async fn read_multipart_image(
         }
     }
 
-    let file = file.ok_or_else(|| ImageHostError::InvalidRequest("file is required".to_string()))?;
+    let file =
+        file.ok_or_else(|| ImageHostError::InvalidRequest("file is required".to_string()))?;
     Ok(MultipartImageInput {
         file,
         alt,

@@ -31,9 +31,7 @@ fn convert_special_images() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         if let Err(err) = convert_to_png(&source, &target_png) {
-            println!(
-                "cargo:warning=failed to convert {source:?} to {target_png:?}: {err}"
-            );
+            println!("cargo:warning=failed to convert {source:?} to {target_png:?}: {err}");
         }
     }
 
@@ -58,15 +56,16 @@ fn read_first_matching_file(public_dir: &Path, name: &str) -> Option<PathBuf> {
         if path.file_stem().and_then(OsStr::to_str) != Some(name) {
             continue;
         }
-        let extension = path.extension().and_then(OsStr::to_str).map(str::to_lowercase);
+        let extension = path
+            .extension()
+            .and_then(OsStr::to_str)
+            .map(str::to_lowercase);
         if let Some(extension) = extension {
             if extension != "png" && SUPPORTED_EXTENSIONS.contains(&extension.as_str()) {
                 return Some(path);
             }
             if extension != "png" {
-                println!(
-                    "cargo:warning=unsupported image extension '{extension}' for {name}"
-                );
+                println!("cargo:warning=unsupported image extension '{extension}' for {name}");
             }
         }
     }

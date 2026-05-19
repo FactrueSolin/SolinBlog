@@ -2,10 +2,10 @@
 
 use axum::{
     body::Body,
+    extract::State,
     http::{HeaderMap, Request, StatusCode},
     middleware::Next,
     response::Response,
-    extract::State,
 };
 use std::sync::Arc;
 
