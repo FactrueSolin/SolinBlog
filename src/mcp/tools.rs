@@ -9,7 +9,7 @@ use rmcp::{tool, tool_router, tool_handler};
 
 // use crate::image::search_images;
 use crate::store::{PageMeta, PageStore};
-use crate::web::{render_markdown_page, validate_html};
+use crate::web::{render_markdown_page_with_id, validate_html};
 
 use super::auth::TokenStore;
 use super::dto::*;
@@ -90,29 +90,6 @@ impl BlogMcpServer {
         &self,
         Parameters(req): Parameters<PushMarkdownRequest>,
     ) -> Result<Json<PushPageResponse>, String> {
-        let html = match render_markdown_page(&req.markdown) {
-            Ok(rendered) => rendered,
-            Err(err) => {
-                return Ok(Json(PushPageResponse {
-                    success: false,
-                    page_id: None,
-                    url: None,
-                    meta: None,
-                    error: Some(err.to_string()),
-                }));
-            }
-        };
-
-        if let Err(err) = validate_html(&html) {
-            return Ok(Json(PushPageResponse {
-                success: false,
-                page_id: None,
-                url: None,
-                meta: None,
-                error: Some(err.to_string()),
-            }));
-        }
-
         let meta = PageMeta {
             seo: crate::store::SeoMeta {
                 title: req.seo_title.clone(),
@@ -130,8 +107,11 @@ impl BlogMcpServer {
 
         match self
             .store
-            .create_page_auto_uid_with_markdown(&meta, &html, Some(&req.markdown))
-        {
+            .create_page_auto_uid_with_markdown(&meta, Some(&req.markdown), |page_id| {
+                let html = render_markdown_page_with_id(&req.markdown, page_id)?;
+                validate_html(&html)?;
+                Ok(html)
+            }) {
             Ok(saved_meta) => Ok(Json(PushPageResponse {
                 url: Some(build_page_full_url(
                     &resolve_site_url_from_env(),
@@ -421,7 +401,7 @@ impl BlogMcpServer {
         }
         let mut markdown_source: Option<String> = None;
         if let Some(markdown) = params.markdown {
-            let rendered = match render_markdown_page(&markdown) {
+            let rendered = match render_markdown_page_with_id(&markdown, &resolved_id) {
                 Ok(rendered) => rendered,
                 Err(err) => {
                     return Ok(Json(UpdatePageResponse {

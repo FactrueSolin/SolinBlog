@@ -72,7 +72,7 @@ pub async fn page_handler(
     };
     match store.load_page(&page_id) {
         Ok((meta, html)) => {
-            let rendered = render_page_html(&meta, &html);
+            let rendered = render_page_html(&page_id, &meta, &html);
             if let Err(err) = store.increment_view_count(&page_id) {
                 eprintln!("[solin-blog] increment view count failed: {err}");
             }
