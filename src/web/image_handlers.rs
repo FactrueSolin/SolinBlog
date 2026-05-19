@@ -37,37 +37,37 @@ struct ImageApiErrorBody {
 }
 
 #[derive(Serialize)]
-struct UploadImageResponse {
-    image_id: String,
-    url: String,
-    meta: ImageMeta,
+pub struct UploadImageResponse {
+    pub image_id: String,
+    pub url: String,
+    pub meta: ImageMeta,
 }
 
 #[derive(Serialize)]
-struct ListImagesResponse {
-    items: Vec<ImageMeta>,
-    total: usize,
-    limit: usize,
-    offset: usize,
+pub struct ListImagesResponse {
+    pub items: Vec<ImageMeta>,
+    pub total: usize,
+    pub limit: usize,
+    pub offset: usize,
 }
 
 #[derive(Serialize)]
-struct DeleteImageResponse {
-    deleted: bool,
-    image_id: String,
+pub struct DeleteImageResponse {
+    pub deleted: bool,
+    pub image_id: String,
 }
 
 #[derive(Deserialize)]
 pub struct ListImagesQuery {
-    limit: Option<usize>,
-    offset: Option<usize>,
-    q: Option<String>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub q: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct UpdateImageRequest {
-    alt: Option<String>,
-    description: Option<String>,
+    pub alt: Option<String>,
+    pub description: Option<String>,
 }
 
 struct MultipartImageInput {
