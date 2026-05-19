@@ -70,6 +70,7 @@
           linear-gradient(135deg, var(--bg-start), var(--bg));
         color: var(--ink);
         font-family: "Times New Roman", "Hiragino Sans GB", "Microsoft YaHei", serif;
+        animation: imagePageGlow 1s ease-out both;
       }
 
       button,
@@ -127,6 +128,7 @@
         display: grid;
         gap: 12px;
         margin-bottom: 18px;
+        animation: imageHeroIn 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
       }
 
       .hero h1 {
@@ -161,6 +163,7 @@
         position: sticky;
         top: 12px;
         z-index: 5;
+        animation: imagePanelIn 0.62s ease-out 0.08s both;
       }
 
       .token-bar input,
@@ -173,6 +176,15 @@
         background: var(--input);
         color: var(--ink);
         outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+      }
+
+      .token-bar input:focus,
+      .search input:focus,
+      textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--glow);
+        transform: translateY(-1px);
       }
 
       textarea {
@@ -208,6 +220,20 @@
 
       .card {
         padding: 20px;
+        animation: imagePanelIn 0.62s ease-out both;
+      }
+
+      .card:nth-child(2) {
+        animation-delay: 0.12s;
+      }
+
+      .card:nth-child(3) {
+        animation-delay: 0.18s;
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 30px 90px var(--shadow);
       }
 
       .card h2,
@@ -223,6 +249,11 @@
         text-align: center;
         cursor: pointer;
         transition: border-color 0.16s ease, background 0.16s ease;
+      }
+
+      .dropzone:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
       }
 
       .dropzone.drag {
@@ -249,6 +280,7 @@
         border: 1px solid var(--line);
         border-radius: 18px;
         background: var(--input);
+        animation: imagePanelIn 0.3s ease-out both;
       }
 
       .preview img,
@@ -310,6 +342,14 @@
         border: 1px solid var(--line);
         border-radius: 20px;
         background: var(--input);
+        animation: imageItemIn 0.36s ease-out both;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .image-item:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent);
+        box-shadow: 0 14px 34px var(--shadow);
       }
 
       .item-title {
@@ -344,6 +384,63 @@
       .notice {
         margin: 12px 0 0;
         color: var(--muted);
+      }
+
+      @keyframes imagePageGlow {
+        from {
+          background-position: -40px -40px, center;
+        }
+
+        to {
+          background-position: 0 0, center;
+        }
+      }
+
+      @keyframes imageHeroIn {
+        from {
+          opacity: 0;
+          transform: translateY(18px) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes imagePanelIn {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes imageItemIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
       }
 
       @media (max-width: 720px) {

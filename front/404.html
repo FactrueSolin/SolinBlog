@@ -67,6 +67,7 @@
         letter-spacing: 0.018em;
         line-height: 1.7;
         transition: var(--transition);
+        animation: notFoundPageIn 0.8s ease-out both;
       }
 
       main.container {
@@ -83,6 +84,7 @@
         box-shadow: var(--card-shadow);
         transition: var(--transition);
         backdrop-filter: blur(6px);
+        animation: notFoundCardIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
       }
 
       .card:hover {
@@ -94,6 +96,7 @@
         margin: 0 0 12px;
         font-size: 2.1rem;
         font-weight: 700;
+        animation: titleFloat 3.2s ease-in-out infinite;
       }
 
       .card p {
@@ -130,6 +133,50 @@
       .home-link:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 20px rgba(201, 100, 66, 0.25);
+      }
+
+      @keyframes notFoundPageIn {
+        from {
+          background-position: center -24px, center;
+        }
+
+        to {
+          background-position: center top, center;
+        }
+      }
+
+      @keyframes notFoundCardIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes titleFloat {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+
+        50% {
+          transform: translateY(-3px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
       }
 
       @media (max-width: 640px) {
