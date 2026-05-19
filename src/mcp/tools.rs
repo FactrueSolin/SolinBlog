@@ -9,7 +9,7 @@ use rmcp::{tool, tool_router, tool_handler};
 
 // use crate::image::search_images;
 use crate::store::{PageMeta, PageStore};
-use crate::web::{render_markdown_page, validate_html};
+use crate::web::{render_markdown_page, render_markdown_page_with_id, validate_html};
 
 use super::auth::TokenStore;
 use super::dto::*;
@@ -421,7 +421,7 @@ impl BlogMcpServer {
         }
         let mut markdown_source: Option<String> = None;
         if let Some(markdown) = params.markdown {
-            let rendered = match render_markdown_page(&markdown) {
+            let rendered = match render_markdown_page_with_id(&markdown, &resolved_id) {
                 Ok(rendered) => rendered,
                 Err(err) => {
                     return Ok(Json(UpdatePageResponse {

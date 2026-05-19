@@ -141,14 +141,28 @@ fn replace_template(template: &str, values: &[(&str, &str)]) -> Result<String> {
     Ok(out)
 }
 
-pub fn render_page_html(meta: &PageMeta, html: &str) -> String {
+pub fn render_page_html(page_id: &str, meta: &PageMeta, html: &str) -> String {
     let title = if meta.seo.title.is_empty() {
         &meta.seo.seo_title
     } else {
         &meta.seo.title
     };
-    let rendered = inject_seo_meta(html, title, &meta.seo);
+    let rendered = inject_page_id(html, page_id);
+    let rendered = inject_seo_meta(&rendered, title, &meta.seo);
     inject_umami_script(&rendered)
+}
+
+fn inject_page_id(html: &str, page_id: &str) -> String {
+    if html.contains("data-page-id=\"") || html.contains("data-page-id='") {
+        return html.to_string();
+    }
+
+    let escaped_page_id = escape_html_attr(page_id);
+    html.replacen(
+        "<body",
+        &format!("<body data-page-id=\"{escaped_page_id}\""),
+        1,
+    )
 }
 
 pub fn markdown_to_html(markdown: &str) -> String {
@@ -165,6 +179,10 @@ pub fn markdown_to_html(markdown: &str) -> String {
 }
 
 pub fn render_markdown_page(markdown: &str) -> Result<String> {
+    render_markdown_page_with_id(markdown, "")
+}
+
+pub fn render_markdown_page_with_id(markdown: &str, page_id: &str) -> Result<String> {
     let markdown_html = markdown_to_html(markdown);
     let header_html =
         std::fs::read_to_string("front/header.html").context("read front/header.html template")?;
@@ -175,6 +193,7 @@ pub fn render_markdown_page(markdown: &str) -> Result<String> {
         &[
             ("site_header", &header_html),
             ("markdown_html", &markdown_html),
+            ("page_id", &escape_html_attr(page_id)),
         ],
     )?;
     Ok(inject_umami_script(&rendered))
