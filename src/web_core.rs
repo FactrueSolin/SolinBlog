@@ -153,15 +153,7 @@ pub fn render_page_html(page_id: &str, meta: &PageMeta, html: &str) -> String {
 }
 
 fn inject_page_id(html: &str, page_id: &str) -> String {
-    let bytes = html.as_bytes();
-    if let Some(body_pos) = find_bytes_ci(bytes, 0, b"<body") {
-        if let Some(body_end) = find_tag_end(bytes, body_pos + 5) {
-            let body_tag = &html[body_pos..=body_end];
-            if body_tag.contains("data-page-id=\"") || body_tag.contains("data-page-id='") {
-                return html.to_string();
-            }
-        }
-    } else {
+    if html.contains("data-page-id=\"") || html.contains("data-page-id='") {
         return html.to_string();
     }
 
