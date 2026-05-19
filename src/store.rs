@@ -118,8 +118,8 @@ impl PageStore {
     pub fn create_page_auto_uid_with_markdown(
         &self,
         meta: &PageMeta,
-        html: &str,
         markdown: Option<&str>,
+        render_html: impl FnOnce(&str) -> Result<String>,
     ) -> Result<PageMeta> {
         let index = self.load_index()?;
         let uid = generate_unique_page_uid(&index)?;
@@ -129,7 +129,8 @@ impl PageStore {
         }
         meta_with_uid.seo.seo_title = to_url_slug(&meta_with_uid.seo.seo_title);
         meta_with_uid.page_uid = uid.clone();
-        self.save_page_with_markdown(&uid, &meta_with_uid, html, markdown)?;
+        let html = render_html(&uid)?;
+        self.save_page_with_markdown(&uid, &meta_with_uid, &html, markdown)?;
         let (saved_meta, _) = self.load_page(&uid)?;
         Ok(saved_meta)
     }
