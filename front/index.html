@@ -18,6 +18,7 @@
         --surface: rgba(255, 255, 255, 0.7);
         --card-bg: rgba(255, 255, 255, 0.85);
         --card-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        --glow: rgba(201, 100, 66, 0.16);
         --transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
         --font-stack: "Hiragino Maru Gothic ProN", "Meiryo", "SF Pro", "Segoe UI", sans-serif;
       }
@@ -35,6 +36,7 @@
           --surface: rgba(255, 255, 255, 0.7);
           --card-bg: rgba(255, 255, 255, 0.85);
           --card-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+          --glow: rgba(201, 100, 66, 0.16);
         }
       }
 
@@ -51,6 +53,7 @@
           --surface: rgba(30, 45, 64, 0.65);
           --card-bg: rgba(30, 45, 64, 0.72);
           --card-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+          --glow: rgba(164, 195, 178, 0.14);
         }
       }
 
@@ -70,6 +73,20 @@
         animation: pageBackgroundSettle 1s ease-out both;
       }
 
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -20% -10% auto;
+        height: 420px;
+        pointer-events: none;
+        background: radial-gradient(circle at 20% 30%, var(--glow), transparent 34%), radial-gradient(circle at 84% 18%, rgba(255, 255, 255, 0.18), transparent 30%);
+        filter: blur(6px);
+        opacity: 0.82;
+        transform: translate3d(0, -16px, 0);
+        animation: ambientDrift 12s ease-in-out infinite alternate;
+        z-index: -1;
+      }
+
       main.container {
         max-width: 880px;
         margin: 0 auto 48px;
@@ -82,7 +99,10 @@
       }
 
       .card {
+        --card-delay: 0ms;
         opacity: 0;
+        position: relative;
+        overflow: hidden;
         background: var(--card-bg);
         border-radius: 12px;
         padding: 20px 24px;
@@ -91,27 +111,29 @@
         transition: var(--transition);
         backdrop-filter: blur(6px);
         animation: cardRiseIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--card-delay);
       }
 
-      .card:nth-child(2) {
-        animation-delay: 0.06s;
-      }
-
-      .card:nth-child(3) {
-        animation-delay: 0.12s;
-      }
-
-      .card:nth-child(4) {
-        animation-delay: 0.18s;
-      }
-
-      .card:nth-child(n + 5) {
-        animation-delay: 0.24s;
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 16px auto 16px 0;
+        width: 4px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, transparent, var(--primary), transparent);
+        opacity: 0;
+        transform: scaleY(0.35);
+        transition: opacity 0.35s ease, transform 0.35s ease;
       }
 
       .card:hover {
         transform: translateY(-3px);
         box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+      }
+
+      .card:hover::before {
+        opacity: 0.8;
+        transform: scaleY(1);
       }
 
       .card.is-filtered {
@@ -135,13 +157,32 @@
       }
 
       .card-header a {
+        position: relative;
         color: var(--text);
         text-decoration: none;
+        transition: color 0.25s ease;
+      }
+
+      .card-header a::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -4px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--primary);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.28s ease;
       }
 
       .card-header a:hover {
         color: var(--primary);
-        text-decoration: underline;
+      }
+
+      .card-header a:hover::after {
+        transform: scaleX(1);
       }
 
       .page-id {
@@ -156,6 +197,18 @@
       .description {
         margin: 12px 0 0;
         color: var(--muted);
+      }
+
+      .updated-at {
+        color: var(--muted);
+        font-size: 12px;
+        padding-top: 3px;
+        transition: color 0.25s ease, transform 0.25s ease;
+      }
+
+      .card:hover .updated-at {
+        color: var(--primary);
+        transform: translateX(-2px);
       }
 
       .keywords {
@@ -186,9 +239,18 @@
         transition: var(--transition);
       }
 
+      .read-more::after {
+        content: "->";
+        transition: transform 0.25s ease;
+      }
+
       .read-more:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 20px rgba(201, 100, 66, 0.25);
+      }
+
+      .read-more:hover::after {
+        transform: translateX(3px);
       }
 
       .empty {
@@ -198,6 +260,7 @@
         border: 1px dashed var(--border);
         color: var(--muted);
         text-align: center;
+        animation: emptyPulseIn 0.7s ease-out both;
       }
 
       .beian {
@@ -230,6 +293,16 @@
         }
       }
 
+      @keyframes ambientDrift {
+        from {
+          transform: translate3d(-10px, -18px, 0) scale(1);
+        }
+
+        to {
+          transform: translate3d(12px, 10px, 0) scale(1.04);
+        }
+      }
+
       @keyframes cardRiseIn {
         from {
           opacity: 0;
@@ -254,6 +327,18 @@
         }
       }
 
+      @keyframes emptyPulseIn {
+        from {
+          opacity: 0;
+          transform: translateY(14px) scale(0.98);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         *,
         *::before,
@@ -262,6 +347,10 @@
           animation-iteration-count: 1 !important;
           scroll-behavior: auto !important;
           transition-duration: 0.01ms !important;
+        }
+
+        body::before {
+          display: none;
         }
       }
 
@@ -284,6 +373,10 @@
       const cards = Array.from(document.querySelectorAll('.card-list .card'));
 
       const normalize = (value) => (value || '').toLowerCase();
+
+      cards.forEach((card, index) => {
+        card.style.setProperty('--card-delay', `${Math.min(index * 55, 280)}ms`);
+      });
 
       const applySearch = () => {
         const query = normalize(searchInput.value.trim());
