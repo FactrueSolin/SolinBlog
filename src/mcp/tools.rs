@@ -8,6 +8,7 @@ use rmcp::{
 use rmcp::{tool, tool_handler, tool_router};
 
 // use crate::image::search_images;
+use crate::image_host::{ImageHostError, ImageMeta, ImageMetaPatch, ImageStore};
 use crate::store::{PageMeta, PageStore};
 use crate::web::{render_markdown_page, validate_html};
 
@@ -19,15 +20,21 @@ use super::utils::{build_page_full_url, resolve_site_url_from_env};
 #[derive(Clone)]
 pub struct BlogMcpServer {
     pub store: std::sync::Arc<PageStore>,
+    pub image_store: std::sync::Arc<ImageStore>,
     pub token_store: std::sync::Arc<TokenStore>,
     pub tool_router: ToolRouter<BlogMcpServer>,
 }
 
 #[tool_router(router = tool_router)]
 impl BlogMcpServer {
-    pub fn new(store: std::sync::Arc<PageStore>, token_store: std::sync::Arc<TokenStore>) -> Self {
+    pub fn new(
+        store: std::sync::Arc<PageStore>,
+        image_store: std::sync::Arc<ImageStore>,
+        token_store: std::sync::Arc<TokenStore>,
+    ) -> Self {
         Self {
             store,
+            image_store,
             token_store,
             tool_router: Self::tool_router(),
         }
@@ -484,14 +491,112 @@ impl BlogMcpServer {
         }
     }
 
-    // /// 搜索图片
-    // pub async fn search_images(
-    //     &self,
-    //     params: ImageSearchRequest,
-    // ) -> Result<crate::image::ImageSearchResponse, String> {
-    //     let limit = params.limit.unwrap_or(50);
-    //     Ok(search_images(&params.keywords, limit).await)
-    // }
+    #[tool(description = "List existing hosted images. Does not upload or replace images")]
+    async fn list_images(
+        &self,
+        Parameters(params): Parameters<ListImagesRequest>,
+    ) -> Result<Json<ListImagesResponse>, String> {
+        let limit = params.limit.unwrap_or(50);
+        let offset = params.offset.unwrap_or(0);
+        let base_url = resolve_site_url_from_env();
+
+        match self
+            .image_store
+            .list_images(limit, offset, params.q.as_deref())
+            .await
+        {
+            Ok((records, total)) => Ok(Json(ListImagesResponse {
+                success: true,
+                images: records
+                    .into_iter()
+                    .map(|record| ImageMeta::from_record(record, &base_url).into())
+                    .collect(),
+                total,
+                limit,
+                offset,
+                error: None,
+            })),
+            Err(err) => Ok(Json(ListImagesResponse {
+                success: false,
+                images: Vec::new(),
+                total: 0,
+                limit,
+                offset,
+                error: Some(mcp_image_error(err)),
+            })),
+        }
+    }
+
+    #[tool(
+        description = "Get one existing hosted image by image_id. Does not upload or replace images"
+    )]
+    async fn get_image(
+        &self,
+        Parameters(params): Parameters<GetImageRequest>,
+    ) -> Result<Json<GetImageResponse>, String> {
+        let base_url = resolve_site_url_from_env();
+        match self.image_store.get_image(&params.image_id).await {
+            Ok(record) => Ok(Json(GetImageResponse {
+                success: true,
+                image: Some(ImageMeta::from_record(record, &base_url).into()),
+                error: None,
+            })),
+            Err(err) => Ok(Json(GetImageResponse {
+                success: false,
+                image: None,
+                error: Some(mcp_image_error(err)),
+            })),
+        }
+    }
+
+    #[tool(description = "Update only alt and description for an existing hosted image")]
+    async fn update_image(
+        &self,
+        Parameters(params): Parameters<UpdateImageRequest>,
+    ) -> Result<Json<UpdateImageResponse>, String> {
+        let base_url = resolve_site_url_from_env();
+        let patch = ImageMetaPatch {
+            alt: params.alt,
+            description: params.description,
+        };
+        match self
+            .image_store
+            .update_image_meta(&params.image_id, patch)
+            .await
+        {
+            Ok(record) => Ok(Json(UpdateImageResponse {
+                success: true,
+                image: Some(ImageMeta::from_record(record, &base_url).into()),
+                error: None,
+            })),
+            Err(err) => Ok(Json(UpdateImageResponse {
+                success: false,
+                image: None,
+                error: Some(mcp_image_error(err)),
+            })),
+        }
+    }
+
+    #[tool(
+        description = "Delete an existing hosted image by image_id. Does not upload or replace images"
+    )]
+    async fn delete_image(
+        &self,
+        Parameters(params): Parameters<DeleteImageRequest>,
+    ) -> Result<Json<DeleteImageResponse>, String> {
+        match self.image_store.delete_image(&params.image_id).await {
+            Ok(()) => Ok(Json(DeleteImageResponse {
+                success: true,
+                image_id: Some(params.image_id),
+                error: None,
+            })),
+            Err(err) => Ok(Json(DeleteImageResponse {
+                success: false,
+                image_id: None,
+                error: Some(mcp_image_error(err)),
+            })),
+        }
+    }
 
     #[tool(description = "Get blog style template")]
     /// 获取博客风格
@@ -549,9 +654,16 @@ impl ServerHandler for BlogMcpServer {
                 .build(),
             server_info: Implementation::from_build_env(),
             instructions: Some(
-                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page, update_markdown_page, get_blog_style, get_html_style."
+                "This server provides tools: push_page, push_markdown, get_all_page, get_page_by_id, delete_page, update_page, update_markdown_page, list_images, get_image, update_image, delete_image, get_blog_style, get_html_style. Image MCP tools manage existing images only: list/get/delete images and update alt/description metadata. They do not support uploading images, replacing images, remote URL import, or base64 image input."
                     .to_string(),
             ),
         }
+    }
+}
+
+fn mcp_image_error(error: ImageHostError) -> McpImageError {
+    McpImageError {
+        code: error.code().to_string(),
+        message: error.message(),
     }
 }

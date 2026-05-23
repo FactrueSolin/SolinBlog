@@ -67,7 +67,11 @@ async fn main() {
     let token_store = Arc::new(TokenStore::new(valid_tokens));
 
     // 创建 MCP 服务器
-    let mcp_server = BlogMcpServer::new(Arc::clone(&store), Arc::clone(&token_store));
+    let mcp_server = BlogMcpServer::new(
+        Arc::clone(&store),
+        Arc::clone(&image_store),
+        Arc::clone(&token_store),
+    );
     let mcp_service = StreamableHttpService::new(
         move || Ok(mcp_server.clone()),
         LocalSessionManager::default().into(),

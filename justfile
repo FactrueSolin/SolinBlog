@@ -12,6 +12,9 @@ check:
 test-image-api:
     @bash -lc 'bash tests/image_api_all.sh'
 
+test-mcp-image-tools:
+    @bash -lc 'bash tests/mcp_image_tools_test.sh'
+
 build:
     @bash -lc 'bash just/build-release.sh'
 
