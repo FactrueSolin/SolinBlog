@@ -3,6 +3,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::image_host::ImageMeta;
 use crate::store::PageMeta;
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -182,4 +183,102 @@ pub struct GetHtmlStyleResponse {
     pub success: bool,
     pub content: String,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct McpImageMeta {
+    pub image_id: String,
+    pub filename: String,
+    pub url: String,
+    pub relative_path: String,
+    pub content_type: String,
+    pub size_bytes: u64,
+    pub width: u32,
+    pub height: u32,
+    pub sha256: String,
+    pub alt: String,
+    pub description: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+impl From<ImageMeta> for McpImageMeta {
+    fn from(meta: ImageMeta) -> Self {
+        Self {
+            image_id: meta.image_id,
+            filename: meta.filename,
+            url: meta.url,
+            relative_path: meta.relative_path,
+            content_type: meta.content_type,
+            size_bytes: meta.size_bytes,
+            width: meta.width,
+            height: meta.height,
+            sha256: meta.sha256,
+            alt: meta.alt,
+            description: meta.description,
+            created_at: meta.created_at,
+            updated_at: meta.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct McpImageError {
+    pub code: String,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ListImagesRequest {
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub q: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ListImagesResponse {
+    pub success: bool,
+    pub images: Vec<McpImageMeta>,
+    pub total: usize,
+    pub limit: usize,
+    pub offset: usize,
+    pub error: Option<McpImageError>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetImageRequest {
+    pub image_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetImageResponse {
+    pub success: bool,
+    pub image: Option<McpImageMeta>,
+    pub error: Option<McpImageError>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UpdateImageRequest {
+    pub image_id: String,
+    pub alt: Option<String>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UpdateImageResponse {
+    pub success: bool,
+    pub image: Option<McpImageMeta>,
+    pub error: Option<McpImageError>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct DeleteImageRequest {
+    pub image_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct DeleteImageResponse {
+    pub success: bool,
+    pub image_id: Option<String>,
+    pub error: Option<McpImageError>,
 }
