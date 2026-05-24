@@ -8,7 +8,7 @@ pub mod image_handlers;
 
 pub use config::{generate_token, resolve_base_url};
 pub use handlers::{
-    index_handler, log_request, page_handler, public_asset_handler, sitemap_handler,
+    PageWebState, index_handler, log_request, page_handler, public_asset_handler, sitemap_handler,
     token_generator_handler,
 };
 pub use image_handlers::{

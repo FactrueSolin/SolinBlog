@@ -46,6 +46,10 @@ pub struct PageIndexEntry {
     pub seo: SeoMeta,
     #[serde(default)]
     pub page_uid: String,
+    #[serde(default)]
+    pub created_at: i64,
+    #[serde(default)]
+    pub updated_at: i64,
     pub original_id: Option<String>,
 }
 
@@ -253,6 +257,8 @@ impl PageStore {
                 page_id: safe_id,
                 seo: meta_to_write.seo.clone(),
                 page_uid: page_uid.clone(),
+                created_at,
+                updated_at,
                 original_id,
             },
         );
@@ -397,6 +403,8 @@ impl PageStore {
                 page_id: safe_id,
                 seo: meta_to_write.seo.clone(),
                 page_uid,
+                created_at,
+                updated_at,
                 original_id,
             },
         );
@@ -460,6 +468,8 @@ impl PageStore {
                 page_id: safe_id,
                 seo: meta.seo.clone(),
                 page_uid,
+                created_at: meta.created_at,
+                updated_at: meta.updated_at,
                 original_id,
             },
         );
@@ -522,6 +532,8 @@ impl PageStore {
                 page_id: safe_id,
                 seo: meta.seo.clone(),
                 page_uid,
+                created_at: meta.created_at,
+                updated_at: meta.updated_at,
                 original_id,
             },
         );
@@ -607,6 +619,8 @@ impl PageStore {
                     page_id,
                     seo: meta.seo,
                     page_uid: meta.page_uid,
+                    created_at: meta.created_at,
+                    updated_at: meta.updated_at,
                     original_id: None,
                 },
             );

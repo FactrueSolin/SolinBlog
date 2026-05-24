@@ -28,23 +28,16 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
         std::fs::read_to_string("front/header.html").context("read front/header.html template")?;
     let template =
         std::fs::read_to_string("front/index.html").context("read front/index.html template")?;
-    let entries = store.list_page_entries().context("list page entries")?;
-    let mut pages = Vec::new();
-    for entry in entries {
-        let meta = store
-            .get_page_meta(&entry.page_id)
-            .with_context(|| format!("load page meta {}", entry.page_id))?;
-        pages.push((entry, meta));
-    }
-    pages.sort_by(|(left_entry, left_meta), (right_entry, right_meta)| {
-        right_meta
+    let mut pages = store.list_page_entries().context("list page entries")?;
+    pages.sort_by(|left_entry, right_entry| {
+        right_entry
             .updated_at
-            .cmp(&left_meta.updated_at)
-            .then_with(|| right_meta.created_at.cmp(&left_meta.created_at))
+            .cmp(&left_entry.updated_at)
+            .then_with(|| right_entry.created_at.cmp(&left_entry.created_at))
             .then_with(|| right_entry.page_id.cmp(&left_entry.page_id))
     });
     let mut rows = String::new();
-    for (entry, meta) in pages {
+    for entry in pages {
         let display_title = if entry.seo.title.is_empty() {
             &entry.seo.seo_title
         } else {
@@ -73,7 +66,7 @@ pub fn render_index_html(store: &PageStore) -> Result<String> {
         let page_id_attr = escape_html_attr(&entry.page_id);
         let url = build_page_url(&entry.page_id, &entry.seo.seo_title);
         let url_attr = escape_html_attr(&url);
-        let updated_at = escape_html(&format_display_timestamp(meta.updated_at));
+        let updated_at = escape_html(&format_display_timestamp(entry.updated_at));
         rows.push_str(&format!(
             "<article class=\"card\" data-page-id=\"{page_id_attr}\" data-title=\"{data_title}\" data-description=\"{data_description}\" data-keywords=\"{data_keywords}\"><div class=\"card-header\"><h2><a href=\"{url_attr}\">{title}</a></h2><span class=\"updated-at\">更新：{updated_at}</span></div><p class=\"description\">{description}</p><div class=\"keywords\"><span>关键词：</span><span class=\"keyword-value\">{keywords}</span></div><div class=\"actions\"><a class=\"read-more\" href=\"{url_attr}\">阅读页面</a></div></article>",
         ));
