@@ -634,11 +634,39 @@ impl PageStore {
         let index_path = self.index_path();
         match fs::read_to_string(&index_path) {
             Ok(raw) => match serde_json::from_str::<StoreIndex>(&raw) {
-                Ok(index) => Ok(index),
+                Ok(mut index) => {
+                    if self.backfill_index_times(&mut index)? {
+                        self.save_index(&index)?;
+                    }
+                    Ok(index)
+                }
                 Err(_) => self.rebuild_index(),
             },
             Err(_) => self.rebuild_index(),
         }
+    }
+
+    fn backfill_index_times(&self, index: &mut StoreIndex) -> Result<bool> {
+        let mut changed = false;
+        for (page_id, entry) in index.pages.iter_mut() {
+            if entry.created_at > 0 && entry.updated_at > 0 {
+                continue;
+            }
+
+            let meta_path = self.base_dir.join(page_id).join("meta.json");
+            let meta_raw = fs::read_to_string(&meta_path)
+                .with_context(|| format!("read meta.json {:?}", meta_path))?;
+            let meta: PageMeta = serde_json::from_str(&meta_raw).context("parse meta.json")?;
+            if entry.created_at <= 0 && meta.created_at > 0 {
+                entry.created_at = meta.created_at;
+                changed = true;
+            }
+            if entry.updated_at <= 0 && meta.updated_at > 0 {
+                entry.updated_at = meta.updated_at;
+                changed = true;
+            }
+        }
+        Ok(changed)
     }
 
     fn save_index(&self, index: &StoreIndex) -> Result<()> {

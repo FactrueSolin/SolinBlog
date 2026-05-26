@@ -112,9 +112,6 @@ index = {
                 "keywords": ["old"],
                 "extra": {},
             },
-            "page_uid": "oldpageuid000001",
-            "created_at": 100,
-            "updated_at": 100,
             "original_id": None,
         },
         "new-page": {
@@ -126,19 +123,43 @@ index = {
                 "keywords": ["new"],
                 "extra": {},
             },
-            "page_uid": "newpageuid000001",
-            "created_at": 200,
-            "updated_at": 300,
             "original_id": None,
         },
     }
 }
 (root / "data" / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
 
-# If the homepage regresses to per-page meta.json reads, this invalid JSON turns / into HTTP 500.
-(root / "data" / "old-page" / "meta.json").write_text("{ this is invalid json", encoding="utf-8")
+old_meta = {
+    "seo": {
+        "title": "Meta Trap Old",
+        "seo_title": "meta-trap-old",
+        "description": "old page from meta",
+        "keywords": ["old-meta"],
+        "extra": {},
+    },
+    "page_uid": "oldpageuid000001",
+    "created_at": 100,
+    "updated_at": 100,
+    "view_count": 0,
+    "extra": {},
+}
+new_meta = {
+    "seo": {
+        "title": "Meta Trap New",
+        "seo_title": "meta-trap-new",
+        "description": "new page from meta",
+        "keywords": ["new-meta"],
+        "extra": {},
+    },
+    "page_uid": "newpageuid000001",
+    "created_at": 200,
+    "updated_at": 300,
+    "view_count": 0,
+    "extra": {},
+}
+(root / "data" / "old-page" / "meta.json").write_text(json.dumps(old_meta, ensure_ascii=False, indent=2), encoding="utf-8")
 (root / "data" / "old-page" / "index.html").write_text("<html><body>old</body></html>", encoding="utf-8")
-(root / "data" / "new-page" / "meta.json").write_text("{ this is also invalid json", encoding="utf-8")
+(root / "data" / "new-page" / "meta.json").write_text(json.dumps(new_meta, ensure_ascii=False, indent=2), encoding="utf-8")
 (root / "data" / "new-page" / "index.html").write_text("<html><body>new</body></html>", encoding="utf-8")
 PY
 }
@@ -224,6 +245,23 @@ PY
     pass "${label}: '${first}' before '${second}'"
 }
 
+assert_legacy_index_backfilled() {
+    "${PYTHON_BIN}" - "${TEST_TMP}/data/index.json" <<'PY' || fail "legacy index.json was not backfilled from meta.json"
+import json
+import pathlib
+import sys
+
+index = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+old_page = index["pages"]["old-page"]
+new_page = index["pages"]["new-page"]
+if old_page.get("created_at") != 100 or old_page.get("updated_at") != 100:
+    raise SystemExit(1)
+if new_page.get("created_at") != 200 or new_page.get("updated_at") != 300:
+    raise SystemExit(1)
+PY
+    pass "legacy index.json is backfilled from meta.json"
+}
+
 start_server() {
     log "building server binary"
     (cd "${ROOT_DIR}" && "${CARGO_BIN}" build --quiet --bin server) || fail "cargo build --bin server failed"
@@ -265,11 +303,12 @@ check_homepage_behavior() {
     local body="${TEST_TMP}/home.html"
     local status
     status="$(request "${body}" "${BASE_URL}/")"
-    assert_status "${status}" "200" "homepage renders with invalid per-page meta.json files"
+    assert_status "${status}" "200" "homepage renders with legacy index.json"
     assert_contains "${body}" "Index Newest" "homepage uses index entry title"
     assert_contains "${body}" "Index Oldest" "homepage includes older index entry"
-    assert_order "${body}" "Index Newest" "Index Oldest" "homepage sorts by index updated_at"
+    assert_order "${body}" "Index Newest" "Index Oldest" "homepage sorts by backfilled meta updated_at"
     assert_not_contains "${body}" "Meta Trap" "homepage ignores per-page meta.json content"
+    assert_legacy_index_backfilled
 
     sleep 1.1
     rewrite_index_for_cache_invalidation
