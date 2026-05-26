@@ -15,6 +15,9 @@ test-image-api:
 test-mcp-image-tools:
     @bash -lc 'bash tests/mcp_image_tools_test.sh'
 
+test-homepage-cache:
+    @bash -lc 'bash tests/homepage_cache_test.sh'
+
 build:
     @bash -lc 'bash just/build-release.sh'
 

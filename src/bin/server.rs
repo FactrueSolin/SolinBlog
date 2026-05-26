@@ -12,7 +12,7 @@ use solin_blog::openapi::build_openapi_json;
 use solin_blog::store::PageStore;
 use solin_blog::web::generate_token;
 use solin_blog::web::{
-    ImageWebState, delete_image_handler, get_image_handler, image_asset_handler,
+    ImageWebState, PageWebState, delete_image_handler, get_image_handler, image_asset_handler,
     image_auth_middleware, image_page_handler, index_handler, list_images_handler, page_handler,
     public_asset_handler, replace_image_handler, sitemap_handler, token_generator_handler,
     update_image_handler, upload_image_handler,
@@ -26,6 +26,7 @@ async fn main() {
 
     // 初始化数据存储
     let store = Arc::new(PageStore::new("data"));
+    let page_state = PageWebState::new(Arc::clone(&store));
     let image_store =
         Arc::new(ImageStore::load_or_init("data/images").expect("initialize image hosting store"));
     let image_max_upload_mb = std::env::var("IMAGE_MAX_UPLOAD_MB")
@@ -93,7 +94,7 @@ async fn main() {
         .route("/pages/{slug}", get(page_handler))
         .route("/sitemap.xml", get(sitemap_handler))
         .route("/public/{*path}", get(public_asset_handler))
-        .with_state(store);
+        .with_state(page_state);
 
     let public_image_router = Router::new()
         .route("/image", get(image_page_handler))

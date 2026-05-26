@@ -3,13 +3,17 @@
 use axum::{
     body::Body,
     extract::{Path, State},
-    http::{HeaderMap, Request, StatusCode, header::CONTENT_TYPE},
+    http::{
+        HeaderMap, Request, StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE},
+    },
     middleware::Next,
     response::{Html, IntoResponse, Response},
 };
 use mime_guess::MimeGuess;
 use std::path::{Component, Path as FsPath, PathBuf};
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::store::PageStore;
 use crate::web::{
@@ -18,6 +22,40 @@ use crate::web::{
 };
 
 use super::config::resolve_base_url;
+
+#[derive(Debug, Clone)]
+pub struct PageWebState {
+    pub store: Arc<PageStore>,
+    pub home_cache: Arc<Mutex<HomePageCache>>,
+}
+
+impl PageWebState {
+    pub fn new(store: Arc<PageStore>) -> Self {
+        Self {
+            store,
+            home_cache: Arc::new(Mutex::new(HomePageCache::default())),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct HomePageCache {
+    key: Option<HomePageCacheKey>,
+    html: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HomePageCacheKey {
+    index_json: Option<FileCacheKey>,
+    header_html: Option<FileCacheKey>,
+    index_html: Option<FileCacheKey>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FileCacheKey {
+    modified_nanos: Option<u128>,
+    len: u64,
+}
 
 /// 日志中间件
 pub async fn log_request(req: Request<Body>, next: Next) -> Response {
@@ -44,8 +82,8 @@ pub async fn log_request(req: Request<Body>, next: Next) -> Response {
 }
 
 /// 首页处理器
-pub async fn index_handler(State(store): State<Arc<PageStore>>) -> impl IntoResponse {
-    match render_index_html(&store) {
+pub async fn index_handler(State(state): State<PageWebState>) -> impl IntoResponse {
+    match cached_index_html(&state).await {
         Ok(html) => Html(html).into_response(),
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -55,9 +93,48 @@ pub async fn index_handler(State(store): State<Arc<PageStore>>) -> impl IntoResp
     }
 }
 
+async fn cached_index_html(state: &PageWebState) -> anyhow::Result<String> {
+    let key = home_page_cache_key(&state.store)?;
+    let mut cache = state.home_cache.lock().await;
+    if cache.key.as_ref() == Some(&key) {
+        return Ok(cache.html.clone());
+    }
+
+    let html = render_index_html(&state.store)?;
+    cache.key = Some(key);
+    cache.html = html.clone();
+    Ok(html)
+}
+
+fn home_page_cache_key(store: &PageStore) -> anyhow::Result<HomePageCacheKey> {
+    Ok(HomePageCacheKey {
+        index_json: file_cache_key(&store.base_dir.join("index.json"))?,
+        header_html: file_cache_key(FsPath::new("front/header.html"))?,
+        index_html: file_cache_key(FsPath::new("front/index.html"))?,
+    })
+}
+
+fn file_cache_key(path: &FsPath) -> anyhow::Result<Option<FileCacheKey>> {
+    match std::fs::metadata(path) {
+        Ok(metadata) => {
+            let modified_nanos = metadata
+                .modified()
+                .ok()
+                .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|duration| duration.as_nanos());
+            Ok(Some(FileCacheKey {
+                modified_nanos,
+                len: metadata.len(),
+            }))
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(err) => Err(err.into()),
+    }
+}
+
 /// 页面处理器
 pub async fn page_handler(
-    State(store): State<Arc<PageStore>>,
+    State(state): State<PageWebState>,
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
     let Some(page_id) = parse_page_id_from_slug(&slug) else {
@@ -70,10 +147,10 @@ pub async fn page_handler(
                 .into_response(),
         };
     };
-    match store.load_page(&page_id) {
+    match state.store.load_page(&page_id) {
         Ok((meta, html)) => {
             let rendered = render_page_html(&meta, &html);
-            if let Err(err) = store.increment_view_count(&page_id) {
+            if let Err(err) = state.store.increment_view_count(&page_id) {
                 eprintln!("[solin-blog] increment view count failed: {err}");
             }
             Html(rendered).into_response()
@@ -103,11 +180,11 @@ pub async fn token_generator_handler() -> impl IntoResponse {
 
 /// Sitemap 处理器
 pub async fn sitemap_handler(
-    State(store): State<Arc<PageStore>>,
+    State(state): State<PageWebState>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let base_url = resolve_base_url(&headers);
-    match render_sitemap_xml(&store, &base_url) {
+    match render_sitemap_xml(&state.store, &base_url) {
         Ok(xml) => ([(CONTENT_TYPE, "application/xml")], xml).into_response(),
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -161,7 +238,14 @@ pub async fn public_asset_handler(Path(path): Path<String>) -> impl IntoResponse
         }
     };
     let mime = guess_mime_type(&full_path);
-    ([(CONTENT_TYPE, mime.as_ref())], data).into_response()
+    (
+        [
+            (CONTENT_TYPE, mime.as_ref()),
+            (CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        data,
+    )
+        .into_response()
 }
 
 /// 清理和验证公共路径
